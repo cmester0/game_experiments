@@ -1,0 +1,8 @@
+* Procedural
+** Map segmentation
+
+* Non-procedural
+** Generate based on heuristics
+
+* Seperate generation
+** 

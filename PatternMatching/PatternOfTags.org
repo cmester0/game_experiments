@@ -1,0 +1,325 @@
+* Pattern of tags
+** Test Inputs
+
+#+NAME: map-input
+: Grass Grass Water Water Grass
+: Grass Grass Water Water Grass
+: Grass Grass Water Water Water
+: Grass Water Grass Grass Grass
+: Grass Grass Grass Grass Grass
+
+#+name: pattern-input
+: Grass Grass Water
+: Grass Grass Water
+: Grass Grass Water
+: GrassWaterBorderVerticalRight
+: Water Water Water
+: Grass Grass Grass
+: Grass Grass Grass
+: GrassWaterBorderHorizontalUp
+: Grass Grass Water
+: Grass Grass Water
+: Grass Grass Water
+: Grass2
+
+** Naive solution
+#+begin_src python :var mapInp=map-input patternInp=pattern-input :results output pp
+  import copy
+
+  # Get Input
+  game_map = map(lambda x: map(lambda y: set(y.split(",")), x.split()), mapInp.split("\n"))
+  patterns = [([patternInp.split("\n")[i + 0].split(),
+		patternInp.split("\n")[i + 1].split(),
+		patternInp.split("\n")[i + 2].split()],
+	       patternInp.split("\n")[i + 3].split()[0]) for i in range(0, len(patternInp.split("\n")), 4)]
+
+  # Compute result naively
+  result_map = copy.deepcopy(game_map)
+
+  comparisons = 0
+
+  for y, l in enumerate(game_map):
+      for x, v in enumerate(l):
+	  if sum([len(gm[x-1:x+2]) for gm in game_map[y-1:y+2]]) != 9: # Should always hold in real cases
+	      continue
+	  for p in patterns:
+	      # comparisons += 9
+	      # temp = set([((dx, dy), v) for dx in range(3) for dy in range(3) for v in [gm[x-1:x+2] for gm in game_map[y-1:y+2]][dx][dy]])
+	      # temppattern = set([((dx, dy), p[0][dx][dy]) for dx in range(3) for dy in range(3)])
+	      # if temp <= temppattern:
+	      #     result_map[y][x].add(p[1])
+
+	      for dx in range(3):
+		  for dy in range(3):
+		      comparisons += 1
+		      if not p[0][dx][dy] in [gm[x-1:x+2] for gm in game_map[y-1:y+2]][dx][dy]:
+			  break
+		  else:
+		      continue
+
+		  break
+	      else:   
+		  result_map[y][x].add(p[1])
+
+  result = ""
+  for y, l in enumerate(result_map):
+      for x, v in enumerate(l):
+	  for s in v:
+	      result += str(s) + ","
+	  result = result[:-1] + " "
+      result = result[:-1] + "\n"
+  print (result[:-1])
+  print (comparisons)
+#+end_src
+
+#+RESULTS:
+: Grass Grass Water Water Grass
+: Grass Grass,Grass2,GrassWaterBorderVerticalRight Water Water Grass
+: Grass Grass Water Water Water
+: Grass Water Grass GrassWaterBorderHorizontalUp,Grass Grass
+: Grass Grass Grass Grass Grass
+: 83
+
+** Compute information about the Pattern / Kernel (Kernel Centers)
+#+begin_src python :var mapInp=map-input patternInp=pattern-input :results output pp
+  import copy
+
+  # Get Input
+  game_map = map(lambda x: map(lambda y: set(y.split(",")), x.split()), mapInp.split("\n"))
+  patterns = [([patternInp.split("\n")[i + 0].split(),
+		patternInp.split("\n")[i + 1].split(),
+		patternInp.split("\n")[i + 2].split()],
+	       patternInp.split("\n")[i + 3].split()[0]) for i in range(0, len(patternInp.split("\n")), 4)]
+
+  comparisons = 0
+
+  # Do precomputations
+  pattern_center_maps = []
+  for p, (l, _) in enumerate(patterns):
+      pattern_center_maps.append(dict())
+      for y, lx in enumerate(l):
+	  for x, v in enumerate(lx):
+	      comparisons += 1
+	      if not v in pattern_center_maps[p]:
+		  pattern_center_maps[p][v] = set()
+	      pattern_center_maps[p][v].add((1-x,1-y))
+
+  # Compute the result map from precomputations on patterns
+  result_map = copy.deepcopy(game_map)
+
+  for p in range(len(patterns)):
+      # Find the center positions, that makes (2,2) (center of 5x5) a valid value
+      possible_kernels = set()
+      for v in game_map[2][2]:
+	  for (x,y) in pattern_center_maps[p][v]:
+	      comparisons += 1
+	      possible_kernels.add((2+x,2+y))
+
+      # Find the invalid positions, based on the new possible centers
+      exclusions = set() 
+      for (x, y) in possible_kernels:
+	  if (x, y) in exclusions:
+	      continue
+	  for v in game_map[y][x]:
+	      for (x2,y2) in possible_kernels.difference(exclusions):
+		  if not (x2-x, y2-y) in pattern_center_maps[p][v]:
+		      exclusions.add((x2,y2))
+		      comparisons += 1
+		      break
+
+      # Check the possible centers for actually fitting the kernel
+      for (x, y) in possible_kernels.difference(exclusions):
+	  if sum([len(gm[x-1:x+2]) for gm in game_map[y-1:y+2]]) != 9:
+	      # Should always hold in real cases
+	      continue
+
+	  for dx in range(3):
+	      for dy in range(3):
+		  comparisons += 1
+		  if not patterns[p][0][dy][dx] in [gm[x-1:x+2] for gm in game_map[y-1:y+2]][dy][dx]:
+		      break
+	      else:
+		  continue
+
+	      break
+	  else:
+	      print (result_map[y][x], patterns[p][1])
+	      result_map[y][x].add(patterns[p][1])
+
+  print (comparisons)
+
+  result = ""
+  for x, l in enumerate(result_map):
+      for y, v in enumerate(l):
+	  for s in v:
+	      result += str(s) + ","
+	  result = result[:-1] + " "
+      result = result[:-1] + "\n"
+  print (result[:-1])
+#+end_src
+
+#+RESULTS:
+: (set(['Grass']), 'GrassWaterBorderVerticalRight')
+: (set(['Grass']), 'GrassWaterBorderHorizontalUp')
+: (set(['Grass', 'GrassWaterBorderVerticalRight']), 'Grass2')
+: 69
+: Grass Grass Water Water Grass
+: Grass Grass,Grass2,GrassWaterBorderVerticalRight Water Water Grass
+: Grass Grass Water Water Water
+: Grass Water Grass GrassWaterBorderHorizontalUp,Grass Grass
+: Grass Grass Grass Grass Grass
+
+** 2D Hash-map filtering / 2D linked list?
+** Make a tree, use tree algoritms ?
+
+** Scan one dimension at a time
+** 2D string matching - RabinKarp, Backer-Bird
+
+
+* Loading a map from fragments
+** Fully load 3x3 around player, unload everything else
+** Fully load 3x3 around player, semi laod 5x5 around player, unload when 7x7 away ?
+** What are good loading heuristics?
+
+
+* Map loading using rounds
+#+NAME: map-layer-0
+: 0 0.4 O 255 0 0 
+: 0.4 0.6 G 255 0 0
+: 0.6 1 M 255 0 0
+
+#+begin_src python :var mapInp=map-layer-0 :results output pp 
+  import random
+  import copy
+
+  def write_to_file (filename, data):
+      with open(filename, "w") as f:
+	  f.write("P6\n" + str(len(data[0])) + " " + str(len(data)) + "\n256\n")
+	  for j, l in enumerate(data):
+	      for i, d in enumerate(l):
+		  f.write(str(d["r"]) + " " + str(d["g"]) + " " + str(d["b"]))
+		  if i < len(l)-1:
+		      f.write(" ")
+	      if j < len(data)-1:
+		  f.write("\n")
+
+  def handle_zero_layer (data, map_initial):
+      for (low, high, val, r, g, b) in map_initial: # TODO: Use binary search tree ? Only works if no overlap
+	  for j, l in enumerate(data):
+	      for i, d in enumerate(l):
+		  if float(low) <= d["v"] and d["v"] < float(high):
+		      data[j][i]["t"].add(val)
+		      data[j][i]["r"] = int(r)
+		      data[j][i]["g"] = int(g)
+		      data[j][i]["b"] = int(b)
+		      print (data[j][i])
+      return data
+
+  data = [[{"v": random.uniform(0,1), "t": set(), "r": 0, "g": 0, "b": 0} for x in range(10)] for y in range(10)]
+  data = handle_zero_layer(data, map(lambda x: x.split(), mapInp.split("\n")))
+  write_to_file ("first.ppm", data)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.069756984152481}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.16984294742700468}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.38454330210317855}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.1417939946641943}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.185437267592528}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.09155464658867707}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.0660150885728299}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.2701792011145717}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.20508595239548855}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.005662228278850989}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.25940871254163955}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.24899520517431262}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.205629755337711}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.2789409882279691}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.3718402357286734}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.19458957638254815}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.24898210566615786}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.0754760658017144}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.11334155080674668}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.12504546599539113}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.009711536127260167}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.35218095614950296}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.17730429952032756}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.30375380449389267}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.3166365570664913}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.07112403069287732}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.10909240161224831}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.22436699999606147}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.1828428201577913}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.010779153689650212}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.029656678713115725}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.2417436147500135}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.3202258764146476}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.34667201952391824}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.16810848659732291}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.02496545030746178}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.27371576080075943}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.0030780714717566493}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.009565108978854986}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.36464323364081186}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.35419939362164177}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.3880018337391885}
+{'r': 255, 'b': 0, 't': set(['O']), 'g': 0, 'v': 0.025379081311461382}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5713366220117956}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.46349400613340463}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.401490609353639}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5317716182431426}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.4233853532814368}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5988280964615891}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5054950978855738}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.43893882327397993}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5678880799765501}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5536881405038714}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5877480353518924}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5459502022224286}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.4034389920259993}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5642450092515588}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.4985901758922958}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5273212351268647}
+{'r': 255, 'b': 0, 't': set(['G']), 'g': 0, 'v': 0.5273880879949874}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8902477016285195}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8214915747081694}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8777820416669697}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.6607527056981767}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.7148392490342812}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.9910385435945084}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8718691041283031}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.7755060751141245}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.6061607815792033}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.6197708034433114}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.721336956949413}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.7727475922077961}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.613523179131775}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8338481777197516}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8601606815491671}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.6102904924235422}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8605580325152148}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8117718363744467}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.6069683673892435}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.9008336752548864}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.6537962443208986}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.7391845771684823}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8353167619584295}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.6453345355469208}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.9808174909272459}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.6795193097708675}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.7434121354631109}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.944682189328117}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.9485766509166458}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.9246111493093574}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8968529634219828}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8145337159582483}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.82928796185314}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.6092185769938543}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.991992211215572}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.76574915559261}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.9094243051164596}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.6789967210032819}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8380112198422425}
+{'r': 255, 'b': 0, 't': set(['M']), 'g': 0, 'v': 0.8724981040341968}
+#+end_example
