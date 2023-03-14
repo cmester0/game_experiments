@@ -77,30 +77,36 @@ var group_a = [{p: new Vector(100, 100), v: new Vector(0.0, 0.0), vel: 20},
 	       {p: new Vector(100, 100), v: new Vector(0.0, 0.0), vel: 10},
 	       {p: new Vector(100, 100), v: new Vector(0.0, 0.0), vel: 5},
 	       {p: new Vector(100, 100), v: new Vector(0.0, 0.0), vel: 1}];
-var target = {p: new Vector(800, 320), v: new Vector(0.0, 0.0), vel: 10};
+var hunt = {p: new Vector(800, 320), v: new Vector(0.0, 0.0), vel: 10};
+var danger = {p: new Vector(800, 320), v: new Vector(0.0, 0.0), vel: 10};
 
 var t = 0;
 var dt = 0.15;
 
 var count = 0;
 
-function update_pos(pos, vel) {
+function update_pos_vel(pos, vel) {
     let p = pos.add(vel.scale(dt));
+    let v = vel;
     
     if (p.x < 0) {
-	p.x = width;
+	p.x = -p.x;
+	v = new Vector(Math.abs(v.x), v.y);
     }
     if (p.x > width) {
-	p.x = 0;
+	p.x = 2 * width - p.x;
+	v = new Vector(-Math.abs(v.x), v.y);
     }
     if (p.y < 0) {
-	p.y = height;
+	p.y = -p.y;
+	v = new Vector(v.x, Math.abs(v.y));
     }
     if (p.y > height) {
-	p.y = 0;
+	p.y = 2 * height - p.y;
+	v = new Vector(v.x, -Math.abs(v.y));
     }
     
-    return p;
+    return {pos: p, vel: v};
 }
 
 function circular_move(obj) {
@@ -109,14 +115,21 @@ function circular_move(obj) {
     a = a.scale(0.2);
     
     let v = obj.v.add(a);
-    let p = update_pos(obj.p, v);
+    
+    let pv = update_pos_vel(obj.p, v);
+    let p = pv.pos;
+    v = pv.vel;
      
     return {p: p, v: v};
 }
 
 function right_move(obj) {
     let v = new Vector(1, 1).normalize().scale(obj.vel);
-    let p = update_pos(obj.p, v);
+
+    let pv = update_pos_vel(obj.p, v);
+    let p = pv.pos;
+    v = pv.vel;
+    
     if (p.y > height) {
 	p.y = 0;
     }
@@ -132,13 +145,8 @@ function random(from, size) {
 }
 
 function seek(obj, target) {
-    let max_force = 0.5;
-    let steering = target.p.sub(obj.p).normalize().scale(max_force);
-    
-    let v = obj.v.add(steering).truncate(obj.vel);
-    let p = update_pos(obj.p, v);
-    
-    return {p: p, v: v}; 
+    let max_force = 1.0;
+    return target.p.sub(obj.p).normalize().scale(max_force);
 }
 
 function arrive(obj, target) {
@@ -153,10 +161,7 @@ function arrive(obj, target) {
 	desired = desired.normalize().scale(obj.vel)
     }
     
-    let v = desired;
-    let p = update_pos(obj.p, v);
-    
-    return {p: p, v: v}; 
+    return desired.sub(obj.v);
 }
 
 function flee(obj, target) {
@@ -171,21 +176,16 @@ function flee(obj, target) {
 	desired = desired.normalize().scale(obj.vel)
     }
     
-    let v = desired;
-    let p = update_pos(obj.p, v);
-
-    // let towards = arrive(obj, target);
-    
-    // let v = towards.v.scale(-1);
-    // let p = update_pos(obj.p, v);
-    
-    return {p: p, v: v};
+    return desired.sub(obj.v);
 }
  
 var wanderAngles = [0, 1, 2, 3];
 function wander(obj, wanderAngle) {
     var v = obj.v.set_angle(wanderAngle);
-    let p = update_pos(obj.p, v);
+
+    let pv = update_pos_vel(obj.p, v);
+    let p = pv.pos;
+    v = pv.vel;
 
     let wa = wanderAngle - 0.05 + Math.random() * 0.1;
     
@@ -194,14 +194,14 @@ function wander(obj, wanderAngle) {
 
 function persue(obj, target) {
     let T = obj.p.sub(target.p).size() / obj.vel;
-    let t = {p: target.p.add(target.v.scale(T)), ...target};
+    let t = {...target, p: target.p.add(target.v.scale(T))};
     
     return seek(obj, t);
 }
 
 function evade(obj, target) {
     let T = obj.p.sub(target.p).size() / obj.vel;
-    let t = {p: target.p.add(target.v.scale(T)), ...target};
+    let t = {...target, p: target.p.add(target.v.scale(T))};
     
     return flee(obj, t);
 }
@@ -210,6 +210,24 @@ function initialize () {
     for (var i = 0; i < group_a.length; i++) {
 	group_a[i].v = new Vector(group_a[i].vel, 0);
     }
+
+    hunt.p = random(new Vector(0,0), new Vector(width, height));
+    range = 10;
+    hunt.v = random(new Vector(-range,-range), new Vector(2 * range, 2 * range));
+
+    danger.p = random(new Vector(0,0), new Vector(width, height));
+    range = 10;
+    danger.v = random(new Vector(-range,-range), new Vector(2 * range, 2 * range));
+}
+
+function update_steering (steering, obj) {
+    obj.v = obj.v.add(steering).truncate(obj.vel);
+
+    let pv = update_pos_vel(obj.p, obj.v);
+    obj.p = pv.pos;
+    obj.v = pv.vel;
+
+    return obj;
 }
 
 function update () {
@@ -217,19 +235,22 @@ function update () {
     count += 1;
     
     // var target_pos = right_move(target); // circular_move(target);
-
     // target.p = target_pos.p;
     // target.v = target_pos.v;
 
-    if (count % 600 == 0) {
-	target.p = random(new Vector(0,0), new Vector(width, height));
-	range = 20;
-	target.v = random(new Vector(-range,-range), new Vector(2 * range, 2 * range));
-    }
-    target.p = update_pos(target.p, target.v);
+    let pv = update_pos_vel(hunt.p, hunt.v);
+    hunt.p = pv.pos;
+    hunt.v = pv.vel;
+
+    pv = update_pos_vel(danger.p, danger.v);
+    danger.p = pv.pos;
+    danger.v = pv.vel;
     
     for (var i = 0; i < group_a.length; i++) {
-	var steering = persue(group_a[i], target);
+	var steering = new Vector(0,0);
+	steering = steering.add(evade(group_a[i], danger).scale(1));
+	steering = steering.add(persue(group_a[i], hunt).scale(1));
+	group_a[i] = update_steering(steering, group_a[i]);
 	
 	// if (group_a[i].p.sub(target.p).size() < 400) {
 	//     var steering = flee(group_a[i], target);
@@ -238,8 +259,8 @@ function update () {
 	//     wanderAngles[i] = steering.wander;
 	// }
 	
-	group_a[i].p = steering.p;
-	group_a[i].v = steering.v;
+	// group_a[i].p = steering.p;
+	// group_a[i].v = steering.v;
     }
 }
 
@@ -250,7 +271,10 @@ function draw () {
     }
      
     ctx.fillStyle = "#FF0000";
-    ctx.fillRect(target.p.x, target.p.y, 50, 50);
+    ctx.fillRect(danger.p.x, danger.p.y, 50, 50);
+     
+    ctx.fillStyle = "#0000FF";
+    ctx.fillRect(hunt.p.x, hunt.p.y, 50, 50);
     
     // ctx.fillStyle = "#000000";
     // ctx.font = "40px Georgia";
