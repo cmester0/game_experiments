@@ -3,6 +3,7 @@ import os
 import colorsys
 import math
 from PIL import Image
+import heapq
 
 # Planar embedding
 # https://en.wikipedia.org/wiki/Planar_straight-line_graph
@@ -80,82 +81,81 @@ img = Image.new('RGB', (width, height)) # width, height
 img.putdata(flat_m)
 img.save('random.png')
 
-def planarfy_graph(vertices, edges):
-    for i,j in edges:
-        x0, y0, c0 = vertices[i]
-        x1, y1, c1 = vertices[j]
+def st_numbering(vertices, edges):
+    # mark s, t and {s,t} old, all other vertices and edges new
+    s, t = next(iter(edges))
 
-        vec_size = math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2)
-        scale_size = vec_size / 10
+    old_edges = set()
+    old_vertices = set()
 
-        if vec_size < 100:
-            continue
+    cycle_edges_v_w = {v: [] for v in range(len(vertices))}
+    cycle_edges_w_v = {v: [] for v in range(len(vertices))}
+    tree_edges_v_w = {v: [] for v in range(len(vertices))}
+    tree_edges_u_v = {v: [] for v in range(len(vertices))}
+    edge_v_w = {v: [] for v in range(len(vertices))}
 
-        x0_ = int(x0 + (x1 - x0) / scale_size)
-        x1_ = int(x1 + (x0 - x1) / scale_size)
+    def dfs():
+        pass
+    dfs()
 
-        y0_ = int(y0 + (y1 - y0) / scale_size)
-        y1_ = int(y1 + (y0 - y1) / scale_size)
+    def pathfinder(vertex):
+        # there is a new cycle edge (v, w) with w ancestor of v (w -*> v) (multi parent)
+        if len(cycle_edges_v_w[v]) > 0:
+            old_edges.add((v, w))
+            path = [(v,w)]
+            # old_vertices.add(v)
+            # old_vertices.add(w)
+        # there is a new tree edge (v, w)
+        elif len(tree_edges_v_w[v]) > 0:
+            old_edges.add((v,w))
+            path = [(v,w)]
+            while not w in old_vertices:
+                # find new edge {w, x} with (x = L(w) or L(x) = L(w))
+                old_vertices.add(v)
+                old_edges.add((w, x))
+                path.append((w,x))
+                w = x
+        # there is a new cycle edge (v, w) with v ancestor of w (v -*> w)
+        elif len(cycle_edges_w_v[v]) > 0:
+            old_edges.add((v,w))
+            path = [(v,w)]
+            while not w in old_vertices:
+                # find new edge {w, x} with (x -> w)
+                old_vertices.add(v)
+                old_edges.add((w, x))
+                path.append((w,x))
+                w = x
+        else:
+            path = []
 
-        vertices[i] = (x0_,y0_,c0)
-        vertices[j] = (x1_,y1_,c1)
+        return path
 
-    return vertices
+    old_vertices.add(s)
+    old_vertices.add(t)
+    old_edges.add((s,t))
 
-def zoom_graph(vertices, edges):
-    # Find scale
-    x_min, x_max = width, 0
-    y_min, y_max = height, 0
+    # # initialize stack to contain s, t on top of it
+    stack = []
+    stack.append(t)
+    stack.append(s)
 
-    for i in range(len(vertices)):
-        x0, y0, c0 = vertices[i]
+    st_number = []
+    while stack:
+        v = stack.pop()
+        vs = pathfinder(v)
+        if vs != []:
+            for vk in vs[::-1]:
+                stack.append(vk)
+            stack.append(v)
+        else:
+            st_number.append(v)
 
-        if x_max < x0:
-            x_max = x0
-        if x0 < x_min:
-            x_min = x0
+    print ("S,T Numbers:", st_number)
 
-        if y_max < y0:
-            y_max = y0
-        if y0 < y_min:
-            y_min = y0
 
-    x_scale = (width-point_width) / (x_max - x_min)
-    y_scale = (height-point_height) / (y_max - y_min)
 
-    print ("SCALE", x_scale, y_scale)
+st_numbering(vertices, edges)
 
-    for i in range(len(vertices)):
-        x0, y0, c0 = vertices[i]
+# def planar(vertices, edges):
+#     for v in range(2, n):
 
-        x0_ = int((x0 - x_min) * x_scale) # int((x0 + width/2) * x_scale - width / 2)
-        y0_ = int((y0 - y_min) * y_scale) # int((y0 + height/2) * y_scale - height / 2)
-
-        print (0, x0_, width, "vs", 0, y0_, height)
-        print (x_min, x0, x_max, "vs", y_min, y0, y_max)
-
-        vertices[i] = (x0_,y0_,c0)
-
-    return vertices
-
-for i in range(100):
-    vertices = planarfy_graph(vertices, edges)
-    vertices = zoom_graph(vertices, edges)
-
-    resMap = []
-    for xi in range(width):
-        resMap.append([])
-        for yi in range(height):
-            resMap[xi].append((0,0,0))
-
-    print_graph(vertices, edges)
-
-    print ("Collapsed map")
-    flat_m = []
-    for yi in range(height):
-        for xi in range(width):
-            flat_m.append(resMap[xi][yi])
-
-    img = Image.new('RGB', (width, height)) # width, height
-    img.putdata(flat_m)
-    img.save('random_collapse' + "{number:02}".format(number=i) + '.png')
