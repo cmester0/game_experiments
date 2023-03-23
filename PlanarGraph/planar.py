@@ -81,102 +81,143 @@ img = Image.new('RGB', (width, height)) # width, height
 img.putdata(flat_m)
 img.save('random.png')
 
-def st_numbering(vertices, edges):
+def st_numbering(vertices, edges, s, t):
     # mark s, t and {s,t} old, all other vertices and edges new
-    s, t = next(iter(edges))
-
-    edge_map = {v: set() for v in range(len(vertices))}
+    
+    edge_map = {v: list() for v in range(len(vertices))} # list should be set
+    # edge_map[t].append(s) # make sure dfs visits s first
     for u,v in edges:
-        edge_map[u].add(v)
-        edge_map[v].add(u)
+        edge_map[u].append(v)
+        edge_map[v].append(u)
 
     print ("EM:", edge_map)
 
     old_edges = set()
     old_vertices = set()
 
-    cycle_edges_v_w = {v: [] for v in range(len(vertices))}
-    cycle_edges_w_v = {v: [] for v in range(len(vertices))}
-    tree_edges_v_w = {v: [] for v in range(len(vertices))}
-    tree_edges_u_v = {v: [] for v in range(len(vertices))}
-    edge_v_w = {v: [] for v in range(len(vertices))}
+    tree_edge = {v: [] for v in range(len(vertices))}
+    back_edge = {v: [] for v in range(len(vertices))}
+    low_node = [0 for v in range(len(vertices))]
 
     dfs_number = [0 for v in range(len(vertices))]
+
+    parrent = [0 for v in range(len(vertices))]
+    
+    pre = {v: 0 for v in range(len(vertices))}
+    current = 1
+    pre[s] = current
+
+    preorder = []
+
     def dfs(v):
         dfs_number[v] = max(dfs_number) + 1
+        preorder.append(v)
 
+        low = (dfs_number[v], v)
         for w in edge_map[v]:
             if dfs_number[w] != 0:
+                if not v in back_edge[w] and not w in back_edge[v] and not v in tree_edge[w] and not w in tree_edge[v]:
+                    back_edge[v].append(w)
+                    low = min(low, (dfs_number[w], w)) # min w for (v,w) is back edge
                 continue
 
-            tree_edges_v_w[v].append(w)
-            # tree_edges_u_v[v].append(w)
+            tree_edge[v].append(w)
+            parrent[w] = v
 
-            dfs(w)
-    dfs(s)
+            low = min(low, dfs(w)) # min of low(tree edge)
 
+        low_node[v] = low[1]
+        return low
+    dfs(s) # Get dfs spanning tree.
+
+    print (s,t)
     print ("DFS", dfs_number)
+    print (tree_edge)
+    print (back_edge)
+    print (low_node)
+    print (parrent)
+    print (preorder)
 
-    def pathfinder(v):
-        # there is a new cycle edge (v, w) with w ancestor of v (w -*> v) (multi parent)
-        if len(cycle_edges_v_w[v]) > 0:
-            w = cycle_edges_v_w[v][0]
-            old_edges.add((v, w))
-            path = [(v,w)]
-            # old_vertices.add(v)
-            # old_vertices.add(w)
-        # there is a new tree edge (v, w)
-        elif len(tree_edges_v_w[v]) > 0:
-            w = tree_edges_v_w[v][0]
-            old_edges.add((v, w))
-            path = [(v,w)]
-            while not w in old_vertices:
-                # find new edge {w, x} with (x = L(w) or L(x) = L(w))
-                old_vertices.add(v)
-                old_edges.add((w, x))
-                path.append((w,x))
-                w = x
-        # there is a new cycle edge (v, w) with v ancestor of w (v -*> w)
-        elif len(cycle_edges_w_v[v]) > 0:
-            w = tree_edges_v_w[v][0]
-            old_edges.add((v, w))
-            path = [(v,w)]
-            while not w in old_vertices:
-                # find new edge {w, x} with (x -> w)
-                old_vertices.add(v)
-                old_edges.add((w, x))
-                path.append((w,x))
-                w = x
-        else:
-            path = []
+    L = [s,t]
 
-        return path
+    sign = dict()
+    sign[s] = -1
 
-    old_vertices.add(s)
-    old_vertices.add(t)
-    old_edges.add((s,t))
+    for _, v in list(sorted(zip(dfs_number,range(len(vertices)))))[2:]: # for v in preorder
+        pvi = 0
+        for i, pv in enumerate(L):
+            if pv == parrent[v]:
+                pvi = i
+                break
+        if sign[low_node[v]] == -1:
+            print ("before (before",parrent[v], v,")", L)
+            L.insert(pvi, v)
+            print ("after (before)", L)
+            sign[parrent[v]] = 1
+        else: # sign(low(v)) == 1
+            L.insert(pvi+1, v)
+            sign[parrent[v]] = -1
+    print (sign)
+    print (L)
 
-    # # initialize stack to contain s, t on top of it
-    stack = []
-    stack.append(t)
-    stack.append(s)
+    return {v: i for i,v in enumerate(L)}
 
-    st_number = []
-    while stack:
-        v = stack.pop()
-        vs = pathfinder(v)
-        if vs != []:
-            for vk in vs[::-1]:
-                stack.append(vk)
-            stack.append(v)
-        else:
-            st_number.append(v)
+# edges = []
+# edges.append((0,9)) # s to t
+# edges.append((9,0))
 
-    print ("S,T Numbers:", st_number)
+# edges.append((8,7)) # g to h
+# edges.append((7,8))
+
+# edges.append((6,7)) # g to f
+# edges.append((7,6))
 
 
+# edges.append((0,4))
+# edges.append((0,2))
+# edges.append((0,3))
+# edges.append((0,1))
 
-st_numbering(vertices, edges)
+# edges.append((1,0))
+# edges.append((1,2))
+# edges.append((1,5))
+
+# edges.append((2,0))
+# edges.append((2,1))
+# edges.append((2,6))
+
+# edges.append((3,0))
+# edges.append((3,4))
+# edges.append((3,6))
+
+# edges.append((4,0))
+# edges.append((4,3))
+# edges.append((4,7))
+
+# edges.append((5,1))
+# edges.append((5,7))
+
+# edges.append((6,2))
+# edges.append((6,3))
+
+# edges.append((7,4))
+# edges.append((7,5))
+# edges.append((7,9))
+
+# edges.append((8,9))
+
+# edges.append((9,7))
+# edges.append((9,8))
+
+# nums = st_numbering(list(range(10)), edges, 0, 9) # 0 = s, 9 = t, 1..8 = a..h
+
+# print (nums)
+
+def planar ():
+
+
+
+# st_numbering(vertices, edges)
 
 # def planar(vertices, edges):
 #     for v in range(2, n):
