@@ -4,6 +4,7 @@ import colorsys
 import math
 from PIL import Image
 import heapq
+from collections import defaultdict
 
 # Planar embedding
 # https://en.wikipedia.org/wiki/Planar_straight-line_graph
@@ -252,98 +253,245 @@ def not_pertient():
 # Classifications, is_full, is_empty
 def classify_children(P):
     return []
-    
-def template_matching(node):
-    cassification = classify_children(P)
-    is_full = len(filter(lambda x: x[0], cassification)) == len(classification)
-    is_empty = len(filter(lambda x: not x[0], cassification)) == len(classification)
 
-    if node[0] == "P":
-        # Template P0
-        if len(filter(lambda x: not x[0], cassification)) == len(classification): # is_empty
-            return classification, "empty"
-        # Template P1
-        if len(filter(lambda x: not x[0], cassification)) == len(classification): # is_full
-            return classification, "full"
-        # Template P2 (root)
-        swap_index = 0
-        for i in cassification:
-            if not i[0] == "empty":
-                swap_index = i
-                break
-        for i in cassification[swap_index+1:]:
-            if not i[0] == "full":
-                break
-        else: # Matches
-            return "P",classification[:swap_index] + [("P",classification,"full")], "root?"
-        # Template P3 (not root)
-        swap_index = 0
-        for i in cassification:
-            if not i[0] == "empty":
-                swap_index = i
-                break
-        for i in cassification[swap_index+1:]:
-            if not i[0] == "full":
-                break
-        else: # Matches
-            return "P",classification[:swap_index] + [("P",classification,"full")], "singly partial"
-        # Template P4 (root)
-        swap_index = 0
-        p4_index = list(filter(lambda x: x[0] == "partial", enumerate(cassification)))
-        if len(p4_index) == 1:
-            index, val = p4_index[0]
-            return "P",classification[:index] + classification[index+1:] + classification[index], "root?"
-        # Template P5
-        # Template P6
-    elif node[0] == "Q":
-        # Template Q0 (Like P0)
-        if len(filter(lambda x: not x[0], cassification)) == len(classification): # is_empty
-            return node, "empty"
-        # Template Q1 (Like P1)
-        if len(filter(lambda x: not x[0], cassification)) == len(classification): # is_full
-            return node, "full"
-
-        # Template Q2
-        # Template Q3
-    elif node[0] == "leaf":
+def Tt(U, S): # S subset U, PQ-tree with S being a subnode
+    Uc = list(filter(lambda x: x not in U, [i for i in S]))
+    if len(Uc) == 0:
+        return ("P", [i for i in U]) # full tree
+    elif len(U) > 0:
+        return ("P", [i for i in U] + [("P", Uc)])
     else:
-        print ("Formatting error")
+        return ("nill", []) # nil tree
 
-    # if is_root:
-    #     if is_full:
-    #         # P nodes (if all empty), identity replacement and empty node
-    #         return ("empty", P)
-    #     elif is_empty:
-    #         # P nodes (if all full), identity replacement and full node
-    #         return ("full", P)
-    #     else:
-    #         # P nodes (partial), make new full P node, and collect all full children under that
-    #         return ("full",)
-    # else:
+# GLOBAL DEFINTIONS
+mark = defaultdict(lambda: "unmarked")
+immediate_siblings = defaultdict(lambda: set())
+parent = defaultdict(lambda: None)
+pertinent_child_count = defaultdict(lambda: 0)
+pertinent_leaf_count = defaultdict(lambda: 0)
 
+def bubble(T,S):
+    queue = [] # FIFO
+    block_count = 0
+    block_nodes = 0
+    off_the_top = 0
+    for x in S:
+        queue.append(x)
+    while len(queue) + block_count + off_the_top > 1:
+        if len(queue) == 0:
+            T = T({}, {}) # nill tree
+            break
+
+        x = queue.pop()
+        mark[x] = "blocked"
+        BS = list(filter(lambda y: mark[y] == "blocked", immediate_siblings[x]))
+        US = list(filter(lambda y: mark[y] == "unblocked", immediate_siblings[x]))
+
+        if len(US) > 0:
+            y = next(US) # choose any Y in US
+            parent[x] = parent[y]
+            mark[x] = "unblocked"
+        elif len(immediate_siblings[x]) < 2:
+            mark[x] = "unblocked"
+
+        if mark[x] == "unblocked":
+            y = parent[x]
+            if len(BS) > 0:
+                LIST = [] # the maximal consecutive set of blocked siblings adjacent to x
+                for z in LIST:
+                    mark[z] = "unblocked"
+                    parent[z] = y
+                    pertinent_child_count[y] = pertinent_child_count[y] + 1
+            if y == None:
+                off_the_top = 1
+            else:
+                pertinent_child_count[y] = pertinent_child_count[y] + 1
+                if mark[y] == "unmarked":
+                    queue = [y] + queue
+                    mark[y] = "queued"
+                block_count = block_count - len(BS)
+                blocked_nodes = blocked_nodes - len(LIST)
+        else:
+            block_count = block_count + 1 - len(BS)
+            blocked_nodes = blocked_nodes + 1
+    return T
+
+def reduce_T(T,S):
+    queue = []
+    for x in S:
+        queue.append(x)
+        pertinent_leaf_count[x] = 1
+    while len(queue) > 0:
+        x = queue.pop()
+        if pertinent_leaf_count[x] < len(S):
+            # x is not root(T,S)
+            y = parent[x]
+            pertinent_leaf_count[y] = pertinent_leaf_count[y] + pertinent_leaf_count[x]
+            pertinent_child_count[y] = pertinent_child_count[y] - 1
+            if pertinent_child_count[y] == 0:
+                queue = [y] + queue
+            if (not template_L1(x)
+                or not template_P1(x)
+                or not template_P3(x)
+                or not template_P5(x)
+                or not template_Q1(x)
+                or not template_Q2(x)):
+                print ("no matches")
+                T = Tt({}, {}) # TODO nill tree
+        else:
+            # x is root(T, S);
+            if (not template_L1(x)
+                or not template_P1(x)
+                or not template_P2(x)
+                or not template_P4(x)
+                or not template_P6(x)
+                or not template_Q1(x)
+                or not template_Q2(x)
+                or not template_Q3(x)):
+                T = Tt({}, {}) # TODO nill tree
+                break
+    return T
+
+
+def  template_L1(x):
+    print ("L1")
     return True
+def  template_P1(x):
+    return True
+def  template_P2(x):
+    return True
+def  template_P3(x):
+    return True
+def  template_P4(x):
+    return True
+
+def template_P5(x):
+    if type[x] != "P":
+        return False
+    if len(partial_children[x] != 1):
+        return False
+    Y = partial_children[x][0] # the unique element
+    EC = list(filter(lambda x: label[x] == "empty", endmost_children[y]))[0] # the unique element
+    FC = list(filter(lambda x: label[x] == "full", endmost_children[y]))[0] # the unique element
+    # the following statement may be performed in time on the order of number of pertient children of x through the use of the circular_link fields.
+    if True: # Y has an empty sibling
+        ES = [] # an empty sibling of Y
+    # Y will be the root of the replacement
+    parent[y] = parent[x]
+    pertinent_leaf_count[y] = pertinent_leaf_count[x]
+    label[y] = "partial"
+    partial_children[parent[y]] = partial_children[parent[y]] + set([y])
+    # remove y from the list of children of x formed by the circular_link fields
+
+    ## TODO ##
+    return True
+
+def  template_P6(x):
+    return True
+def  template_Q1(x):
+    return True
+def  template_Q2(x):
+    return True
+def  template_Q3(x):
+    return True
+
+
+def reduction(U,Ss):
+    T = Tt(U,U)
+    print ("SS", Ss)
+    for S in Ss:
+        print ("bubble")
+        T = bubble(T,S)
+        print (T)
+        print ("reduce")
+        T = reduce_T(T,S)
+        print (T)
+    return T
 
 def planar (vertices, edges):
     s, t = next(iter(edges))
     nums = st_numbering(list(range(len(vertices))), edges, s, t) # 0 = s, 9 = t, 1..8 = a..h
     print (nums)
+    nums = {i: i for i in range(len(vertices))} # Fake numbering to match paper!
+    print (nums)
 
     v_edges = virtual_edges(edges, nums)
     v_verts = list(range(len(vertices)))
 
-    print (Gk(edges, 1))
+    S, G1_ = Gk(edges, 1)
+    T = Tt(G1_, G1_)
+    print (T)
 
     for v in range(2,len(vertices)):
-        while not_pertient():
-            if not template_matching():
-                print ("Not planar")
-                return False
-        # Replace full node of PQ tree by a P-node
-        # Add all neighbord of v larger than v as the sons of the P-node
+        for S in G1_:
+            print ("bubble")
+            T = bubble(T,S)
+            print (T)
+            print ("reduce")
+            T = reduce_T(T,S)
+            print (T)
+
+        
+        # while not_pertient():
+        #     if not template_matching():
+        #         print ("Not planar")
+        #         return False
+        # # Replace full node of PQ tree by a P-node
+        # # Add all neighbord of v larger than v as the sons of the P-node
     print ("G is planar")
     return True
 
-planar(vertices, edges)
+# edges = []
+# edges.append((0,4)) # s to t
+# edges.append((4,0))
+
+# edges.append((0,1))
+# edges.append((1,0))
+
+# edges.append((0,2))
+# edges.append((2,0))
+
+# edges.append((3,4))
+# edges.append((4,3))
+
+# edges.append((2,3))
+# edges.append((3,2))
+
+# edges.append((2,4))
+# edges.append((4,2))
+
+# edges.append((1,2))
+# edges.append((2,1))
+
+# edges.append((1,3))
+# edges.append((3,1))
+
+# edges.append((1,4))
+# edges.append((4,1))
+
+# planar(list(range(5)), edges)
+# planar(vertices, edges)
+
+edges = []
+edges.append((0,5)) # s to t
+
+edges.append((0,1))
+edges.append((0,2))
+edges.append((0,4))
+
+edges.append((1,4))
+edges.append((1,3))
+edges.append((1,2))
+
+edges.append((2,5))
+edges.append((2,3))
+
+edges.append((3,4))
+edges.append((3,5))
+
+edges.append((4,5))
+
+planar(list(range(6)), edges)
 
 # st_numbering(vertices, edges)
 
