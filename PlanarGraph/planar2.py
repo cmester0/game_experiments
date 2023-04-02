@@ -130,7 +130,7 @@ def dfs(v):
         visited.add((v,w))
 
         if w in dfs_numbering:
-            dfs_fronds[w].append(v)
+            dfs_fronds[v].append(w)
             path.append(w) # The back edge
             paths.append(list(path))
             path.clear()
@@ -160,8 +160,8 @@ print (parent)
 print (dfs_numbering)
 print (lowpt1)
 print (lowpt2)
-# print (dfs_tree)
-# print (dfs_fronds)
+print (dfs_tree)
+print (dfs_fronds)
 
 exit(0)
 
