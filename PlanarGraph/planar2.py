@@ -48,6 +48,7 @@ def bucket_sort(low, high, values, bucket_fun, val_fun = lambda x: x):
     return res
 
 def split_off_multiple_edges(edges):
+    # Sort edges in linear time using bucket sort twice (sort by min endpoint, and then max endpoint) O(|V| + |E|)
     # Sort edges such that all multiple edges comes after each other
     edges = bucket_sort(0, len(vertices), edges, lambda x: min(x[0], x[1]))
     edges = bucket_sort(0, len(vertices), edges, lambda x: max(x[0], x[1]))
@@ -99,7 +100,10 @@ count = 0
 
 dfs_tree = {v: list() for v in range(len(vertices))}
 dfs_fronds = {v: list() for v in range(len(vertices))}
+dfs_fronds_inv = {v: list() for v in range(len(vertices))}
 parent = [None for v in range(len(vertices))]
+
+ND = [0 for v in range(len(vertices))] # Number of decendants
 
 lowpt1 = dict()
 lowpt2 = dict()
@@ -123,6 +127,7 @@ def dfs(v):
 
     path.append(v)
     old_path = list(path)
+
     for w in Adj[v]:
         # dfs never search same edge twice!
         if (v, w) in visited or (w, v) in visited:
@@ -131,6 +136,7 @@ def dfs(v):
 
         if w in dfs_numbering:
             dfs_fronds[v].append(w)
+            dfs_fronds_inv[w].append(v)
             path.append(w) # The back edge
             paths.append(list(path))
             path.clear()
@@ -146,6 +152,7 @@ def dfs(v):
         dfs_tree[v].append(w)
         parent[w] = v
         dfs(w)
+        ND[v] += ND[w] + 1
         path = list(old_path)
 
         # what is the lowest number reachable in subtree
@@ -155,212 +162,226 @@ def dfs(v):
 
 
 dfs(0)
-print (paths)
-print (parent)
-print (dfs_numbering)
-print (lowpt1)
-print (lowpt2)
-print (dfs_tree)
-print (dfs_fronds)
 
-exit(0)
+print (ND)
 
-# Gc = set(edges)
-# Pc = dict()
+# print (paths)
+# print (parent)
+# print (dfs_numbering)
+# print (lowpt1)
+# print (lowpt2)
+# print (dfs_tree)
+# print (dfs_fronds)
 
-# # Palm tree is represented by PARENT, TREE_ARC, and TYPE
+Gc = set(edges)
+Pc = dict()
+C_counter = -1
+Cs = []
+
+# Palm tree is represented by PARENT, TREE_ARC, and TYPE
 # parent = [0 for _ in range(len(vertices))]
 # tree_arc = [0 for _ in range(len(vertices))]
 # arc_type = [0 for _ in edges]
 
-# Adj = {i : [] for i in range(len(vertices))}
-# for v, w in edges:
-#     Adj[v].append(w)
+Adj = {i : [] for i in range(len(vertices))}
+for v, w in edges:
+    Adj[v].append(w)
 
-# def deg(v):
-#     # degree of v in Gc
-#     pass
+def deg(v):
+    # degree of v in Gc
+    pass
 
-# def C_union(C, l):
-#     global Gc
+def C_union(C, l):
+    global Gc
 
-#     C_ = C.union(l)
-#     Gc = Gc.difference(C_)
-#     return C_
+    Cs[C] = Cs[C].union(l)
+    Gc = Gc.difference(Cs[C])
+    return C
 
-# def new_component(l):
-#     return C_union(set(), l)
+def new_component(l):
+    global C_counter
 
-# def new_virtual_edge(v, w, C):
-#     e_ = (v,w)
-#     C = C_union(C, set([e_])) # TODO: Update C?
-#     return e_
-
-# def make_tree_edge(e, v, w):
-#     Pc[v] = w
-
-# def first_child(v):
-#     for x in Adj[v]:
-#         if x in Pc and v == Pc[x]:
-#             return x
-#     # otherwise?
-#     pass
-
-# def high(w):
-#     if len(F(w)) == 0:
-#         return 0
-#     else:
-#         return 0 # TODO!
-
-# # lowpt1 = dict(min(set(v) + set(w for ))
-# # lowpt2 = dict()
-# # ND = dict()
-
-# degree = [0 for _ in range(len(vertices))]
-
-# fronds = [[] for _ in range(len(vertices))]
-
-# START = {e: False for e in edges}
-
-
-# def type_2_pairs():
-#     global ESTACK
+    C_counter += 1
+    Cs.append(set())
     
-#     while (v != 1 and (any(lambda x: x[1] == v, TSTACK) or deg(w) == 2 and first_child(w) > w)):
-#         if a == v and parent[b] == a:
-#             TSTACK.pop()
-#         else:
-#             e_ab = None
-#             if deg(w) == 2 and first_child(w) > w:
-#                 C = new_component(set())
-#                 # TODO # remove top edges (v,w) and (w,b) from ESTACK and add to C
-#                 e_ = new_virtual_edge(v,x,C)
-#                 if ESTACK[-1] == (v,b):
-#                     e_ab = ESTACK.pop()
-#             else:
-#                 h,a,b = TSTACK.pop()
-#                 C = new_component(set())
-#                 while any(lambda x: a <= x[0] <= h and a <= x[1] <= h):
-#                     if (x,y) == (a,b):
-#                         e_ab = ESTACK.pop()
-#                     else:
-#                         C = C_union(C, set(ESTACK.pop()))
-#             if not e_ab is None:
-#                 C = new_component(set([e_ab, e_]))
-#                 e_ = new_virtual_edge(v,b,C)
-#             ESTACK.append(e_)
-#             make_tree_edge(e_, (v, b))
-#             w = b
+    C = C_union(C_counter, l)
 
-# def type_1_pair():
-#     global ESTACK
+    return C_counter
+
+def new_virtual_edge(v, w, C):
+    e_ = (v,w)
+    C = C_union(C, set([e_])) # TODO: Update C?
+    return e_
+
+def make_tree_edge(e, vw):
+    v, w = vw
+    Pc[v] = w
+
+def first_child(v):
+    for x in Adj[v]:
+        if x in Pc and v == Pc[x]:
+            return x
+    # otherwise?
+    pass
+
+print ("fronds", dfs_fronds_inv)
+
+def high(w):
+    if len(dfs_fronds_inv[w]) == 0:
+        return 0
+    return dfs_fronds_inv[w][0] # source vertex if furst visited edge in F(w)?
+
+# lowpt1 = dict(min(set(v) + set(w for ))
+# lowpt2 = dict()
+# ND = dict()
+
+degree = [0 for _ in range(len(vertices))]
+
+fronds = [[] for _ in range(len(vertices))]
+
+
+START = {(l[0], l[1]) for l in paths}
+
+def type_2_pairs():
+    global ESTACK
+
+    while (v != 1 and (any(map(lambda x: x[1] == v, TSTACK)) or deg(w) == 2 and first_child(w) > w)):
+        if a == v and parent[b] == a:
+            TSTACK.pop()
+        else:
+            e_ab = None
+            if deg(w) == 2 and first_child(w) > w:
+                C = new_component(set())
+                # TODO # remove top edges (v,w) and (w,b) from ESTACK and add to C
+                e_ = new_virtual_edge(v,x,C)
+                if ESTACK[-1] == (v,b):
+                    e_ab = ESTACK.pop()
+            else:
+                h,a,b = TSTACK.pop()
+                C = new_component(set())
+                while any(map(lambda x: a <= x[0] <= h and a <= x[1] <= h)):
+                    if (x,y) == (a,b):
+                        e_ab = ESTACK.pop()
+                    else:
+                        C = C_union(C, set(ESTACK.pop()))
+            if not e_ab is None:
+                C = new_component(set([e_ab, e_]))
+                e_ = new_virtual_edge(v,b,C)
+            ESTACK.append(e_)
+            make_tree_edge(e_, (v, b))
+            w = b
+
+def type_1_pair():
+    global ESTACK
     
-#     if lowpt2(w) >= v and lowpt1(w) < v and (parent[v] != 1 or True): # TODO, v is adjacent to a not yet visited tree arc:
-#         C = new_component(set())
-#         while any(lambda x: w <= x[0] <= w + ND(w) or w <= y <= w + ND(w), ESTACK):
-#             C = C_union(C, set(ESTACK.pop()))
-#         e_ = new_virtual_edge(v, lowpt1(w), C)
-#         if ESTACK[-1] == (v, lowpt1(w)):
-#             C = new_component(set([ESTACK.pop(), e_]))
-#             e_ = new_virtual_edge(v, lowpt1(w), C)
-#         if lowpt1(w) != parent[v]:
-#             ESTACK.append(e_)
-#             make_tree_edge(e_, (lowpt1(w), v))
-#         else:
-#             C = new_component(set([e_, (lowpt1(w), v)]))
-#             e_ = new_virtual_edge(lowpt1, e, C)
-#             make_tree_edge(e_, (lowpt1(w), v))
+    if lowpt2[w] >= v and lowpt1[w] < v and (parent[v] != 0 or True): # TODO: should `parent[v] != 1` ? # TODO, v is adjacent to a not yet visited tree arc:
+        C = new_component(set())
+        while any(map(lambda x: w <= x[0] <= w + ND[w] or w <= x[1] <= w + ND[w], ESTACK)):
+            C = C_union(C, set(ESTACK.pop()))
+        e_ = new_virtual_edge(v, lowpt1[w], C)
+        if ESTACK[-1] == (v, lowpt1[w]):
+            C = new_component(set([ESTACK.pop(), e_]))
+            e_ = new_virtual_edge(v, lowpt1[w], C)
+        if lowpt1[w] != parent[v]:
+            ESTACK.append(e_)
+            make_tree_edge(e_, (lowpt1[w], v))
+        else:
+            C = new_component(set([e_, (lowpt1[w], v)]))
+            e_ = new_virtual_edge(lowpt1[w], v, C)
+            make_tree_edge(e_, (lowpt1[w], v))
 
-# def path_search(v):
-#     global TSTACK
-#     global ESTACK
+def path_search(v):
+    global TSTACK
+    global ESTACK
 
-#     print ("path search", v)
+    print ("path search", v)
 
-#     for w in Adj[v]:
-#         e = (v, w)
-#         if e in tree_arc:
-#             if START[e]: # e starts a path
-#                 deleted = []
-#                 temp = []
-#                 for (h,a,b) in TSTACK:
-#                     if a > lowpt1(w):
-#                         deleted.append((h,a,b))
-#                     else:
-#                         temp.append((h,a,b))
-#                 TSTACK = temp
+    for w in Adj[v]:
+        e = (v, w)
+        if w in dfs_tree[v]: # e in tree_arc
+            if e in START: # e starts a path
+                deleted = []
+                temp = []
+                for (h,a,b) in TSTACK:
+                    if a > lowpt1[w]:
+                        deleted.append((h,a,b))
+                    else:
+                        temp.append((h,a,b))
+                TSTACK = temp
 
-#                 if len(deleted) == 0:
-#                     TSTACK.append((w + ND(w) - 1, lowpt(w), v))
-#                 else:
-#                     y = max(deleted)[0]
-#                     h,a,b = deleted.pop() # last triple deleted
-#                     TSTACK.append((max(y, w + ND(w) - 1), lowpt(w), b))
-#                 path_search(w)
-#                 ESTACK.append((v,w))
-#                 # check for type-2 pairs
-#                 type_2_pairs()
-#                 # check for a type-1 pair
-#                 type_1_pair()
-#                 if START[e]: # e starts a path
-#                     TSTACK.clear()
-#                 while (len(TSTACK) > 0
-#                        and TSTACK[-1][1] != v
-#                        and TSTACK[-1][2] != v
-#                        and high(v) > TSTACK[-1][0]):
-#                     TSTACK.pop()
-#         else:
-#             if START[e]: # e starts a path
-#                 deleted = []
-#                 temp = []
-#                 for (h,a,b) in TSTACK:
-#                     if a > w:
-#                         deleted.append((h,a,b))
-#                     else:
-#                         temp.append((h,a,b))
-#                 TSTACK = temp
-                
-#                 if len(deleted) == 0:
-#                     TSTACK.append((v,w,v))
-#                 else:
-#                     y = max(deleted)[0]
-#                     h, a, b = deleted.pop()
-#                     TSTACK.append((y,w,b))
-#             if w == parent[v]:
-#                 C = new_component(set([e, (w,v)]))
-#                 e_ = new_virtual_edge(w,v,C)
-#                 make_tree_edge(e_, (w, v))
-#             else:
-#                 ESTACK.append((v, w)) # e = v \-> w
+                if len(deleted) == 0:
+                    TSTACK.append((w + ND[w] - 1, lowpt1[w], v))
+                else:
+                    y = max(deleted)[0]
+                    h,a,b = deleted.pop() # last triple deleted
+                    TSTACK.append((max(y, w + ND[w] - 1), lowpt1[w], b))
+                path_search(w)
+                ESTACK.append((v,w))
+                # check for type-2 pairs
+                type_2_pairs()
+                # check for a type-1 pair
+                type_1_pair()
+                if e in START: # e starts a path
+                    TSTACK.clear()
+                while (len(TSTACK) > 0
+                       and TSTACK[-1][1] != v
+                       and TSTACK[-1][2] != v
+                       and high(v) > TSTACK[-1][0]):
+                    TSTACK.pop()
+        else:
+            if e in START: # e starts a path
+                deleted = []
+                temp = []
+                for (h,a,b) in TSTACK:
+                    if a > w:
+                        deleted.append((h,a,b))
+                    else:
+                        temp.append((h,a,b))
+                TSTACK = temp
 
-# def find_split_components():
-#     global TSTACK
-#     global ESTACK
-#     ESTACK = [] # TODO: Where to init?
-#     TSTACK = []
-#     path_search(0) # path_search(1)
-#     print (ESTACK, TSTACK)
-#     C = new_component(set(ESTACK)) # e1, ..., el from ESTACK.
+                if len(deleted) == 0:
+                    TSTACK.append((v,w,v))
+                else:
+                    y = max(deleted)[0]
+                    h, a, b = deleted.pop()
+                    TSTACK.append((y,w,b))
+            if w == parent[v]:
+                C = new_component(set([e, (w,v)]))
+                e_ = new_virtual_edge(w,v,C)
+                make_tree_edge(e_, (w, v))
+            else:
+                ESTACK.append((v, w)) # e = v \-> w
 
-# def build_triconnnected_components(vertices, edges):
-#     # Sort edges in linear time using bucket sort twice (sort by min endpoint, and then max endpoint) O(|V| + |E|)
-#     edge_sort_temp = bucket_sort(0, len(vertices), edges, lambda x: min(x[0], x[1]))
-#     edge_sort_2 = bucket_sort(0, len(vertices), edge_sort_temp, lambda x: max(x[0], x[1]))
-#     print (edge_sort_2)
+def find_split_components():
+    global TSTACK
+    global ESTACK
+    ESTACK = [] # TODO: Where to init?
+    TSTACK = []
+    path_search(0) # path_search(1)
+    C = new_component(set(ESTACK)) # e1, ..., el from ESTACK.
 
-#     C = find_split_components()
-#     print (C)
-#     m = 0 if C == None else len(C)
-#     C_type = ["bond" for i in range(m)]
+find_split_components()
+
+# print (Gc)
+# print (Pc)
+# print (Cs)
+
+def build_triconnnected_components():
+    # find_split_components()
+    # print (C)
+    # m = len(C)
+    # C_type = ["bond" for i in range(m)]
+
+    print (Cs)
     
-#     for i in range(m):
-#         if len(C[i]) != 0 and (C_type[i] == "bond" or C_type[i] == "polygon"):
-#             for e in C[i]:
-#                 for j in range(m): # TODO! not linear:
-#                     if j != i and e in C[j] and C_type[i] == C_type[j]:
-#                         C[i] = (C[i] + C[j]) - set([e])
-#                         C[j] = set()
-#     print (C)
+    for i in range(len(Cs)):
+        if len(Cs[i]) != 0 and (C_type[i] == "bond" or C_type[i] == "polygon"):
+            for e in Cs[i]:
+                for j in range(m): # TODO! not linear:
+                    if j != i and e in C[j] and C_type[i] == C_type[j]:
+                        Cs[i] = (Cs[i] + Cs[j]) - set([e])
+                        Cs[j] = set()
+    print (Cs)
 
 
-# build_triconnnected_components(vertices, edges)
+build_triconnnected_components()
