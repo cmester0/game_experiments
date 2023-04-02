@@ -99,6 +99,7 @@ count = 0
 
 dfs_tree = {v: list() for v in range(len(vertices))}
 dfs_fronds = {v: list() for v in range(len(vertices))}
+parent = [None for v in range(len(vertices))]
 
 lowpt1 = dict()
 lowpt2 = dict()
@@ -123,6 +124,7 @@ def dfs(v):
     path.append(v)
     old_path = list(path)
     for w in Adj[v]:
+        # dfs never search same edge twice!
         if (v, w) in visited or (w, v) in visited:
             continue
         visited.add((v,w))
@@ -134,21 +136,30 @@ def dfs(v):
             path.clear()
             path.append(v)
             old_path.clear()
+
+            # what is the lowest number reachable in subtree
+            if dfs_numbering[w] < lowpt1[dfs_numbering[v]]:
+                lowpt2[dfs_numbering[v]] = lowpt1[dfs_numbering[v]]
+                lowpt1[dfs_numbering[v]] = dfs_numbering[w]
             continue
 
         dfs_tree[v].append(w)
+        parent[w] = v
         dfs(w)
         path = list(old_path)
 
-        if dfs_numbering[w] < lowpt1[dfs_numbering[v]]:
+        # what is the lowest number reachable in subtree
+        if lowpt1[dfs_numbering[w]] < lowpt1[dfs_numbering[v]]:
             lowpt2[dfs_numbering[v]] = lowpt1[dfs_numbering[v]]
-            lowpt1[dfs_numbering[v]] = dfs_numbering[w]
+            lowpt1[dfs_numbering[v]] = lowpt1[dfs_numbering[w]]
+
 
 dfs(0)
 print (paths)
-# print (dfs_numbering)
-# print (lowpt1)
-# print (lowpt2)
+print (parent)
+print (dfs_numbering)
+print (lowpt1)
+print (lowpt2)
 # print (dfs_tree)
 # print (dfs_fronds)
 
