@@ -78,8 +78,6 @@ def print_graph(vertices, edges):
         x1, y1, c1 = vertices[j]
         print_line(x0,y0,x1,y1,c0)
 
-vertices = [(x, y, (255,random.randint(0,255),0)) for x, y in [random_point() for _ in list(range(16))]]
-
 edges = set()
 # 0-1-3-2
 edges.add((0,1))
@@ -97,29 +95,30 @@ edges.add((5,7))
 edges.add((7,6))
 edges.add((4,6))
 
-# 3-12-15-8
-edges.add((3,12))
-edges.add((12,15))
-edges.add((15,8))
-edges.add((8,3))
+# # 3-12-15-8
+# edges.add((3,12))
+# edges.add((12,15))
+# edges.add((15,8))
+# edges.add((8,3))
 
-edges.add((3,13))
-edges.add((12,13))
-edges.add((13,14))
-edges.add((14,8))
-edges.add((14,15))
+# edges.add((3,13))
+# edges.add((12,13))
+# edges.add((13,14))
+# edges.add((14,8))
+# edges.add((14,15))
 
-# 2-3-8-9
-edges.add((9,8))
-edges.add((2,9))
+# # 2-3-8-9
+# edges.add((9,8))
+# edges.add((2,9))
 
-# 9-8-11
-edges.add((8,11))
-edges.add((9,11))
+# # 9-8-11
+# edges.add((8,11))
+# edges.add((9,11))
 
-edges.add((8,10))
-edges.add((9,10))
-edges.add((11,10))
+# edges.add((8,10))
+# edges.add((9,10))
+# edges.add((11,10))
+
 
 # 0  1
 #  45
@@ -130,6 +129,8 @@ edges.add((11,10))
 # 9  8  15
 #  10
 #  11
+
+vertices = [(x, y, (255,random.randint(0,255),0)) for x, y in [random_point() for _ in list(range(max(max(edges))+1))]]
 
 # vertices, edges = random_graph(10, 100)
 
@@ -152,11 +153,11 @@ def output_map():
 # output_map()
 # resMap = resetMap()
 
-zoom = 1
+zoom = 1 / 10
 while True:
     done = False
     scale = 0.01
-    point_charge = 3
+    point_charge = 0.08
 
     for _ in range(100):
         vertices_diff = [(0,0) for _ in range(len(vertices))]
@@ -201,12 +202,12 @@ while True:
                            c)
         if random.randint(0, 3000) == 0:
             a = random.randint(0, len(vertices)-1)
-            b = random.randint(0, len(vertices)-1)
-            vertices[a], vertices[b] = (vertices[b][0], vertices[b][1], vertices[a][2]), (vertices[a][0], vertices[a][1], vertices[b][2])
+            vertices[a] = (vertices[a][0] + random.randint(-10, 10), vertices[a][1] + random.randint(-10, 10), vertices[a][2])
 
     print_graph([(x / zoom,
                   y / zoom, c) for x, y, c in vertices], edges)
     output_map()
+    print (map_iter,"\r",end="")
     resMap = resetMap()
 
     if done:

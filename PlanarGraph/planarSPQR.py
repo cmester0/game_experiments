@@ -71,9 +71,22 @@ def print_line(x0,y0,x1,y1, color):
 
 def print_dashed_line(x0,y0,x1,y1, color):
     steps = abs(x0 - x1) + abs(y0 - y1)
+    length = math.sqrt((x0 - x1)**2 + (y0 - y1)**2)
     for i in range(int(steps)):
-        for j in range(0,int(steps / 8),2):
-            if j * steps / 8 < i < (j+1) * steps / 8:
+        for j in range(0,int(length/8),2):
+            if j * steps/(length/8) < i < (j+1) * steps/(length/8):
+                break
+        else:
+            continue
+
+        resMap[int(x0 + (x1 - x0) / steps * i) % (width-point_width+1)][int(y0 + (y1 - y0) / steps * i) % (height-point_height+1)] = color
+
+def print_dotted_line(x0,y0,x1,y1, color):
+    steps = abs(x0 - x1) + abs(y0 - y1)
+    length = math.sqrt((x0 - x1)**2 + (y0 - y1)**2)
+    for i in range(int(steps)):
+        for j in range(0,int(length/2),2):
+            if j * steps/(length/2) < i < (j+1) * steps/(length/2):
                 break
         else:
             continue
@@ -98,8 +111,8 @@ def print_graph(vertices, edges, virtual_edges=[]):
 vertices = [(x, y, (255,random.randint(0,255),0)) for x, y in [random_point() for _ in list(range(16))]]
 
 SPQR_tree = []
-SPQR_tree.append(("S", [2,3,9,8], [(2,3),(3,8),(8,9)], [(2,9)]))
-SPQR_tree.append(("R", [0,1,2,3,4,5,6,7], [(2,3)], [(0,1),(1,3),(2,0),(0,4),(1,5),(3,7),(2,6),(6,4),(4,5),(5,7),(7,6)]))
+SPQR_tree.append(("S", [2,3,8,9], [(2,3),(3,8),(8,9)], [(2,9)]))
+SPQR_tree.append(("R", [0,1,3,2,4,5,6,7], [(2,3)], [(0,1),(1,3),(2,0),(0,4),(1,5),(3,7),(2,6),(6,4),(4,5),(5,7),(7,6)]))
 SPQR_tree.append(("R", [3,12,13,14,15,8], [(3,8)], [(3,12),(12,15),(15,8),(8,14),(14,15),(3,13),(12,13),(13,14)]))
 SPQR_tree.append(("P", [9,8], [(9,8),(9,8)], [(9,8)]))
 SPQR_tree.append(("R", [9,8,10,11], [(9,8)], [(9,10),(9,11),(8,11),(10,11),(8,10)]))
@@ -144,11 +157,18 @@ for j, (t, vert, virt, edg) in enumerate(SPQR_tree):
         y_pos = cy + r * math.sin(vj / len(vert) * 2 * math.pi)
 
         # print ("V", v)
-        # x_rand = random.randint(int(j * one_width), int((j+1) * one_width))
-        # y_rand = random.randint(0, height-point_height)
+        x_rand = random.randint(int(j * one_width), int((j+1) * one_width))
+        y_rand = random.randint(0, height-point_height)
 
         # if not v in vertices:
-        sub_verts[v] = (int(x_pos), int(y_pos), (255, j * 80, 0))
+        if t == "S":
+            sub_verts[v] = (int(x_pos), int(y_pos), (255, j * 80, 0))
+
+        elif t == "R":
+            sub_verts[v] = (x_rand, y_rand, (255, j * 80, 0))
+        elif t == "P":
+            sub_verts[v] = (int(x_pos), int(y_pos), (255, j * 80, 0))
+
         # else:
         #     sub_verts[v] = vertices[v]
 
