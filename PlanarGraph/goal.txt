@@ -1,0 +1,4 @@
+maximum angular resolution
+planar straight-line drawing
+O(n)
+grid?
