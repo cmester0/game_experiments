@@ -286,7 +286,7 @@ def tutte_from_graph(G):
     p, E_ = ForceDirected((V,E), 10e-10, 10e10, outer)
     return (p,E_), set(outer)
 
-def add_color(G, c = lambda i, n: (255,random.randint(0,255),random.randint(0,255))):
+def add_color(G, c = lambda i, n: tuple(map(lambda x: int(x*255), colorsys.hsv_to_rgb(i/n, 0.7, 1.0)))):
     V,E = G
     return [(x,y,c(i, len(V)))for i, (x,y) in enumerate(V)], E
 
@@ -369,9 +369,10 @@ def dual(G, outer):
 
 def spawn_in_area(G):
     V, E = G
-    V, E = add_color((V, E), c = lambda i, n: tuple(map(lambda x: int(x*255), colorsys.hsv_to_rgb(i/n, 0.7, 1.0))))
+    V, E = add_color((V, E))
 
     SV = scale_graph(V)
+    print_graph([(x,y,(255,255,255)) for (x,y,c) in SV], E)
 
     sMap = []
     for xi in range(width):
@@ -409,8 +410,6 @@ def spawn_in_area(G):
         for xi in range(width):
             if sMap[xi][yi] != -1:
                 resMap[xi][yi] = colors[sMap[xi][yi]]
-
-    print ("Done", E)
 
     print_graph([(x,y,(255,255,255)) for (x,y,c) in SV], E)
 
@@ -479,62 +478,103 @@ def delaunay_triangulation(pointList):
                                   (y * (largestY - smallestY) + smallestY))
                                  for x,y in points] for points in result_triangulation]
 
-    return new_result_triangulation
+    outer_result_triangulation = [[((x * (largestX - smallestX) + smallestX),
+                                  (y * (largestY - smallestY) + smallestY))
+                                 for x,y in points] for points in triangulation]
 
-plist = [(x,y) for x,y,c in random_points_list(1000)]
-triangulation = delaunay_triangulation(plist)
+
+    return new_result_triangulation, (outer_result_triangulation,
+                                      [((x * (largestX - smallestX) + smallestX),
+                                        (y * (largestY - smallestY) + smallestY))
+                                       for x,y in outer_triangle])
+
+plist = [(x,y) for x,y,c in random_points_list(40)]
+triangulation, (outer_triangulation, outer) = delaunay_triangulation(plist)
+
+# # # 0   1
+# # #  2 3
+# # #  4 5
+# # # 6   7  13
+# # #      14
+# # #      15
+# # # 8   9  12
+# # #  10
+# # #  11
+# # # n = 16
+# # G = (list(range(16)),[(0,1),(1,7),(7,6),(6,0),(0,2),(1,3),(7,5),(6,4),(2,3),(3,5),(5,4),(4,2),(7,13),(13,12),(12,9),(9,7),(7,14),(13,14),(14,15),(15,9),(15,12),(9,8),(9,10),(9,11),(11,8),(11,10),(8,10),(8,6)])
 
 # # 0   1
 # #  2 3
 # #  4 5
-# # 6   7  13
-# #      14
-# #      15
-# # 8   9  12
-# #  10
-# #  11
-# # n = 16
-# G = (list(range(16)),[(0,1),(1,7),(7,6),(6,0),(0,2),(1,3),(7,5),(6,4),(2,3),(3,5),(5,4),(4,2),(7,13),(13,12),(12,9),(9,7),(7,14),(13,14),(14,15),(15,9),(15,12),(9,8),(9,10),(9,11),(11,8),(11,10),(8,10),(8,6)])
+# # 6   7
+# G = (list(range(8)),[(0,1),(1,7),(7,6),(6,0),(0,2),(1,3),(7,5),(6,4),(2,3),(3,5),(5,4),(4,2)])
 
-# 0   1
-#  2 3
-#  4 5
-# 6   7
-G = (list(range(8)),[(0,1),(1,7),(7,6),(6,0),(0,2),(1,3),(7,5),(6,4),(2,3),(3,5),(5,4),(4,2)])
-
-# G = (list(range(4)),[(0,1),(0,2),(1,3),(2,3)])
+# # G = (list(range(4)),[(0,1),(0,2),(1,3),(2,3)])
 
 
-# V, E = triangulate_graph(G)
-V,E = G
-print ("START", E)
-(V, E), outer = tutte_from_graph((V, E))
+# # V, E = triangulate_graph(G)
+# V,E = G
+# print ("START", E)
+# (V, E), outer = tutte_from_graph((V, E))
 
-# spawn_in_area((V,E))
+# # spawn_in_area((V,E))
 
-# print_tutte_dual(G)
+# # print_tutte_dual(G)
 
 vertices = []
 edges = []
-for i, ((x0,y0),(x1,y1),(x2,y2)) in enumerate(triangulation):
-    vertices.append((x0,y0))
-    vertices.append((x1,y1))
-    vertices.append((x2,y2))
+outer_set = set()
 
-    edges.append((i*3+0,i*3+1))
-    edges.append((i*3+1,i*3+2))
-    edges.append((i*3+0,i*3+2))
+vertices_index = dict()
+index = 0
 
-vertices = vertices + plist
-V, E = add_color((vertices, edges), c = lambda i, n: tuple(map(lambda x: int(x*255), colorsys.hsv_to_rgb(i/n, 0.7, 1.0))))
+for (x0,y0),(x1,y1),(x2,y2) in outer_triangulation:
+    if not (x0,y0) in vertices_index:
+        vertices_index[(x0,y0)] = index
+        vertices.append((x0,y0))
+        index += 1
+    if not (x1,y1) in vertices_index:
+        vertices_index[(x1,y1)] = index
+        vertices.append((x1,y1))
+        index += 1
+    if not (x2,y2) in vertices_index:
+        vertices_index[(x2,y2)] = index
+        vertices.append((x2,y2))
+        index += 1
+
+    if (x0,y0) in outer:
+        outer_set.add(vertices_index[(x0, y0)])
+    if (x1,y1) in outer:
+        outer_set.add(vertices_index[(x1, y1)])
+    if (x2,y2) in outer:
+        outer_set.add(vertices_index[(x2, y2)])
+
+    edges.append((vertices_index[(x0, y0)],vertices_index[(x1, y1)]))
+    edges.append((vertices_index[(x1, y1)],vertices_index[(x2, y2)]))
+    edges.append((vertices_index[(x0, y0)],vertices_index[(x2, y2)]))
+
+outer_list = list(sorted(outer_set))
+
+vertices = vertices # + plist
+
+# # PLOT GRAPH:
+# V, E = vertices, edges
+V, E = add_color((vertices, edges))
+V.pop(outer_list[2])
+V.pop(outer_list[1])
+V.pop(outer_list[0])
+E = [(a,b) for a, b in E if not (a in outer_list or b in outer_list)]
+E = [(a if a < outer_list[2] else a-1,
+      b if b < outer_list[2] else b-1)
+     for a, b in E]
+E = [(a if a < outer_list[1] else a-1,
+      b if b < outer_list[1] else b-1)
+     for a, b in E]
+E = [(a if a < outer_list[0] else a-1,
+      b if b < outer_list[0] else b-1)
+     for a, b in E]
 SV = scale_graph(V)
-print_graph([(x,y,c) for (x,y,c) in SV], edges)
-# print_graph([(x,y,(255,255,255)) for (x,y,c) in SV], edges)
-
-    # print_line(x0,y0,x1,y1,(255,255,255))
-    # print_line(x1,y1,x2,y2,(255,255,255))
-    # print_line(x0,y0,x2,y2,(255,255,255))
-
+print_graph([(x,y,c) for (x,y,c) in SV], E)
 
 print ("Random map")
 flat_m = []
@@ -544,4 +584,60 @@ for yi in range(height):
 
 img = Image.new('RGB', (width, height)) # width, height
 img.putdata(flat_m)
-img.save('finished.png')
+img.save('finished_data.png')
+resMap = []
+for xi in range(width):
+    resMap.append([])
+    for yi in range(height):
+        resMap[xi].append((0,0,0))
+
+G = (list(range(len(vertices))), edges)
+# (V, E), _ = tutte_from_graph(G)
+V,E = G
+# (V,E), outer = add_outer_face((V,E), 3) # >= 4 break guarantee?
+p, E_ = ForceDirected((V,E), 10e-10, 10e10, outer_list)
+(V, E) = (p,E_)
+## End of tutte
+V.pop(outer_list[2])
+V.pop(outer_list[1])
+V.pop(outer_list[0])
+E = [(a,b) for a, b in E if not (a in outer_list or b in outer_list)]
+E = [(a if a < outer_list[2] else a-1,
+      b if b < outer_list[2] else b-1)
+     for a, b in E]
+E = [(a if a < outer_list[1] else a-1,
+      b if b < outer_list[1] else b-1)
+     for a, b in E]
+E = [(a if a < outer_list[0] else a-1,
+      b if b < outer_list[0] else b-1)
+     for a, b in E]
+
+V_, E_ = add_color((V, E))
+print_graph_scaled((V_, E_))
+
+print ("Random map")
+flat_m = []
+for yi in range(height):
+    for xi in range(width):
+        flat_m.append(resMap[xi][yi])
+
+img = Image.new('RGB', (width, height)) # width, height
+img.putdata(flat_m)
+img.save('finished_result.png')
+resMap = []
+for xi in range(width):
+    resMap.append([])
+    for yi in range(height):
+        resMap[xi].append((0,0,0))
+
+spawn_in_area((V, E))
+
+print ("Random map")
+flat_m = []
+for yi in range(height):
+    for xi in range(width):
+        flat_m.append(resMap[xi][yi])
+
+img = Image.new('RGB', (width, height)) # width, height
+img.putdata(flat_m)
+img.save('finished_spawn.png')
