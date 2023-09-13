@@ -100,8 +100,12 @@ def random_SPQR_tree(max_tree_nodes = 10, max_vertices_per = 7):
 
     tree_nodes = random.randint(2,max_tree_nodes)
 
+    prev_node = ""
     for i in range(tree_nodes):
-        tree_type = ["S","P","R"][random.randint(0,2)]
+        # tree_type = ["S","P","R"][random.randint(0,2)]
+        tree_type = ["S","P"][random.randint(0,1)]
+        while tree_type == prev_node:
+            tree_type = ["S","P"][random.randint(0,1)]
 
         vertices = [from_node, to_node]
         if not (tree_type == "P" or tree_type == "Q"):
@@ -115,41 +119,37 @@ def random_SPQR_tree(max_tree_nodes = 10, max_vertices_per = 7):
 
         SPQR_tree[i] = (tree_type, vertices, [], edges)
 
-        offspring = random.randint(0,i)
-        while (len(SPQR_tree[offspring][3]) == 0):
+        if i < tree_nodes-1:
+            # Setup for next iteration
             offspring = random.randint(0,i)
+            while (len(SPQR_tree[offspring][3]) == 0):
+                offspring = random.randint(0,i)
 
-        offspring_edge = random.randint(0,len(SPQR_tree[offspring][3])-1)
-        from_node, to_node = SPQR_tree[offspring][3][offspring_edge]
-        # del SPQR_tree[offspring][3][offspring_edge]
-        SPQR_tree[offspring][2].append((i+1,(from_node, to_node)))
+            offspring_edge = random.randint(0,len(SPQR_tree[offspring][3])-1)
+            from_node, to_node = SPQR_tree[offspring][3][offspring_edge]
+            # del SPQR_tree[offspring][3][offspring_edge]
+            SPQR_tree[offspring][2].append((i+1,(from_node, to_node)))
+            prev_node = SPQR_tree[offspring][0]
 
     for i in range(tree_nodes):
         print (i,SPQR_tree[i][0], SPQR_tree[i][1],SPQR_tree[i][2], SPQR_tree[i][3])
     return SPQR_tree
 
-# random_SPQR_tree()
+SPQR_tree = {} # random_SPQR_tree(3)
+# SPQR_tree = random_SPQR_tree(7)
 
-SPQR_tree = {}
+# print ()
+# print (SPQR_tree)
+# print ()
+# print ()
 
-# # WIKI pedia example
-# SPQR_tree[0] = ("S", [6,7,9,8], [(1,(6,7)),(2,(7,9)),(3,(9,8))], [(6,8)])
-# SPQR_tree[1] = ("R", [0,1,7,6,2,3,5,4], [], [(0,1),(1,7),(7,6),(6,0),(0,2),(1,3),(5,7),(6,4),(2,3),(3,5),(5,4),(4,2)])
-# SPQR_tree[2] = ("R", [7,13,12,9,14,15], [], [(7,13),(13,12),(12,9),(9,7),(7,14),(13,14),(12,15),(9,15),(14,15)])
-# SPQR_tree[3] = ("P", [8,9], [(4,(8,9))], [(8,9),(8,9)])
-# SPQR_tree[4] = ("R", [8,9,11,10], [], [(8,9),(9,11),(11,8),(8,10),(9,10),(11,10)])
+SPQR_tree[0] = ("S", [0,2,4,5], [(1,(0,2))], [(0,2),(1,4),(4,5),(0,5)])
+SPQR_tree[1] = ("R", [0,2,1,3], [(0,(0,2))], [(0,2),(1,2),(0,3),(1,3),(2,3)])
 
-# 0   1
-#  2 3
-#  4 5
-# 6   7  13
-#      14
-#      15
-# 8   9  12
-#  10
-#  11
-# n = 16
+# SPQR_tree[0] = ("S", [0, 1, 2, 3, 4], [(1,(2,3))], [(0,1),(1,2),(2,3),(3,4),(0,4)])
+# SPQR_tree[1] = ("P", [2, 3], [(2,(2,3))], [(2,3),(2,3)])
 
+<<<<<<< Updated upstream
 # SPQR_tree[0] = ("S", [0,1,2,3,4], [(1,(0,1)),(2,(1,2)),(3,(2,3))], [(0,1),(1,2),(2,3),(3,4),(0,4)])
 
 # #     4
@@ -246,6 +246,13 @@ SPQR_tree[2] = ("R", [0,1,4,3], [(0,(0,1))], [(0,1),(1,4),(0,4),(0,3),(1,3),(3,4
 # #     2 -- 3
 # #      \__/
 
+=======
+# SPQR_tree[2] = ("S", [2, 3, 5, 6, 7, 8], [(1,(2,3)), (3,(2,8))], [(2,3), (3,5), (5,6), (6,7), (7,8), (2,8)])
+# SPQR_tree[3] = ("P", [2, 8], [(4,(2,8))], [(2,8),(2,8)])
+
+# SPQR_tree[4] = ("S", [2, 8, 9, 10, 11, 12], [(3,(2,8))], [(2,8), (8, 9), (9, 10), (10, 11), (11, 12), (12, 2)])
+
+>>>>>>> Stashed changes
 
 vertices = []
 edges = []
@@ -301,6 +308,29 @@ def draw_skeleton(j, c, angle, radius, parent = (-1, -1)):
             else:
                 drawn_ve[(a,b)] = ((x1, y1), (x2, y2), math.atan2(y1 - y2, x1 - x2)) # (math.pi * ((len(e) - i + angle) + 4)) / (4 * len(e)))
                 # print_line(x1, y1, x2, y2, (0,0,255)) # Virtual edge
+    elif tree_type == "R":
+        print ()
+        print(drawn_ve[parent])
+
+        vert_pos = dict()
+        vert_pos[parent[0]] = drawn_ve[parent][0]
+        vert_pos[parent[1]] = drawn_ve[parent][1]
+        temp = list(filter(lambda x: x != parent[0] and x != parent[1], vertices))
+        print (temp)
+        vert_pos[temp[1]] = (cx-(drawn_ve[parent][0][0] - cx),
+                             cy-(drawn_ve[parent][1][1] - cy))
+        vert_pos[temp[0]] = (cx-(drawn_ve[parent][1][0] - cx),
+                             cy-(drawn_ve[parent][0][1] - cy))
+        # = ((x1, y1), (x2, y2), math.atan2(y1 - y2, x1 - x2))
+        for (a,b) in e:
+            print (vert_pos, a, b)
+            x1, y1 = vert_pos[a]
+            x2, y2 = vert_pos[b]
+            print (x1, y1)
+            if not (a,b) in ve_edges:
+                print_line(x1, y1, x2, y2, (255,0,0))
+            else:
+                drawn_ve[(a,b)] = ((x1, y1), (x2, y2), math.atan2(y1 - y2, x1 - x2))
 
     elif tree_type == "R":
         print ("EE", e)

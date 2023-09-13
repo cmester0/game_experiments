@@ -144,6 +144,12 @@ def depth(v):
     t, vert, sub_tree, edge = SPQR_tree[v]
     return max([depth(i) + 1 for i, (ai, bi) in sub_tree] + [0])
 
+# def size(v, rej):
+#     t, vert, sub_tree, edge = SPQR_tree[v]
+#     return sum([size(v2, set(vert) + rej) for v2 in set(vert) - rej])
+# for i in range(16):
+#     print (size(i,set()), "size(",i,")")
+
 max_depth = (depth(0))
 
 def pos_from_xyad(x,y,a,d):

@@ -1,0 +1,7 @@
+Embed:
+Boyer--Myrvold (On the Cutting Edge: Simplified O(n) Planarity by Edge Addition, 2004),
+
+Draw:
+Chrobak--Payne (A Linear-time Algorithm for Drawing a Planar Graph on the Grid, 1995).
+
+spectral layout
