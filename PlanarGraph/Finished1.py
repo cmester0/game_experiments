@@ -91,7 +91,11 @@ def print_graph(vertices, edges):
     for i, j in edges:
         x0, y0, c0 = vertices[i]
         x1, y1, c1 = vertices[j]
-        print_line(x0,y0,x1,y1,c0)
+        steps = abs(x0 - x1) + abs(y0 - y1)
+        x2, y2 = x0 + (x1 - x0) / steps * steps/2, y0 + (y1 - y0) / steps * steps/2
+        x2_, y2_ = x0 + (x1 - x0) / steps * steps//2, y0 + (y1 - y0) / steps * steps//2
+        print_line(x0,y0,x2,y2,c0)
+        print_line(x2_,y2_,x1,y1,c1)
 
 def scale_graph(vertices):
     px = list(map(lambda x: x[0], vertices))
@@ -256,6 +260,8 @@ def ForceDirected(G, epsilon, K, outer_face):
 
     t = 0
     while t < K and (first or max([size(F[t-1][v]) for v in V]) > epsilon):
+        if t > 0 and t % 1 == 0:
+            print (t, max([size(F[t-1][v]) for v in V]), epsilon)
         first = False
         F.append([(0,0) for v in V])
 
@@ -283,10 +289,10 @@ def ForceDirected(G, epsilon, K, outer_face):
 def tutte_from_graph(G):
     V,E = G
     (V,E), outer = add_outer_face((V,E), 3) # >= 4 break guarantee?
-    p, E_ = ForceDirected((V,E), 10e-10, 10e10, outer)
+    p, E_ = ForceDirected((V,E), 10e3, 50, outer)
     return (p,E_), set(outer)
 
-def add_color(G, c = lambda i, n: tuple(map(lambda x: int(x*255), colorsys.hsv_to_rgb(i/n, 0.7, 1.0)))):
+def add_color(G, c = lambda i, n: tuple(map(lambda x: int(x*255), colorsys.hsv_to_rgb(i /n, 0.7, 1.0)))):
     V,E = G
     return [(x,y,c(i, len(V)))for i, (x,y) in enumerate(V)], E
 
@@ -402,6 +408,8 @@ def spawn_in_area(G):
     iters = 0
     while len(queue) > 0:
         iters += 1
+        if iters > 0 and iters % 1000 == 0:
+            print (iters, len(queue))
         elem_x, elem_y, elem_i = queue.pop(random.randint(0,len(queue)-1))
         if sMap[elem_x][elem_y] != -1:
             continue
@@ -501,7 +509,7 @@ def delaunay_triangulation(pointList):
                                         (y * (largestY - smallestY) + smallestY))
                                        for x,y in outer_triangle])
 
-plist = [(x,y) for x,y,c in random_points_list(40)]
+plist = [(x,y) for x,y,c in random_points_list(300)]
 triangulation, (outer_triangulation, outer) = delaunay_triangulation(plist)
 
 # # # 0   1
@@ -608,7 +616,7 @@ G = (list(range(len(vertices))), edges)
 # (V, E), _ = tutte_from_graph(G)
 V,E = G
 # (V,E), outer = add_outer_face((V,E), 3) # >= 4 break guarantee?
-p, E_ = ForceDirected((V,E), 10e-10, 10e10, outer_list)
+p, E_ = ForceDirected((V,E), 10e2, 10e4, outer_list)
 (V, E) = (p,E_)
 ## End of tutte
 V.pop(outer_list[2])
