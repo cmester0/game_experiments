@@ -414,6 +414,76 @@ def spawn_in_area(G):
 
     print_graph([(x,y,(255,255,255)) for (x,y,c) in SV], E)
 
+# Bowyer Watson
+def delaunay_triangulation(pointList):
+    largestX = max(map(lambda x: x[0], pointList))
+    smallestX = min(map(lambda x: x[0], pointList))
+
+    largestY = max(map(lambda x: x[1], pointList))
+    smallestY = min(map(lambda x: x[1], pointList))
+
+    new_point_list = [((x - smallestX) / (largestX - smallestX),
+                       (y - smallestY) / (largestY - smallestY)) for x,y in pointList]
+
+    triangulation = []
+    outer_triangle = ((-0.7,0),(0.6,2),(1.5,-0.1))
+    triangulation.append(outer_triangle)
+
+    def inside_circumcircle(point, triangle):
+        (Ax, Ay), (Bx, By), (Cx, Cy) = triangle
+
+        Bx_, By_ = Bx - Ax, By - Ay
+        Cx_, Cy_ = Cx - Ax, Cy - Ay
+
+        D_ = 2 * (Bx_ * Cy_ - By_ * Cx_)
+
+        Ux_ = 1/D_ * (Cy_ * ( Bx_ ** 2 + By_ **2 ) - By_ * (Cx_ ** 2 + Cy_ ** 2))
+        Uy_ = 1/D_ * (Bx_ * ( Cx_ ** 2 + Cy_ **2 ) - Cx_ * (Bx_ ** 2 + By_ ** 2))
+
+        r = math.sqrt(Ux_**2 + Uy_**2)
+
+        Ux = Ux_ + Ax
+        Uy = Uy_ + Ay
+
+        return (point[0] - Ux) ** 2 + (point[1] - Uy) ** 2 <= r ** 2
+
+    for point in new_point_list:
+        badTriangles = set()
+        for triangle in triangulation:
+            if inside_circumcircle(point, triangle):
+                badTriangles.add(triangle)
+        polygon = set()
+        for triangle in badTriangles:
+            for edge in [(triangle[0], triangle[1]),
+                         (triangle[1], triangle[2]),
+                         (triangle[0], triangle[2])]:
+                for other_triangle in badTriangles:
+                    if (edge in [(other_triangle[0], other_triangle[1]),
+                                 (other_triangle[1], other_triangle[2]),
+                                 (other_triangle[0], other_triangle[2])]
+                        and triangle != other_triangle):
+                        break
+                else:
+                    polygon.add(edge)
+        for triangle in badTriangles:
+            if triangle in triangulation:
+                triangulation.pop(triangulation.index(triangle))
+        for edge in polygon:
+            triangulation.append((edge[0], edge[1], point))
+
+    result_triangulation = list(filter(lambda triangle: not (outer_triangle[0] in triangle or
+                                                        outer_triangle[1] in triangle or
+                                                        outer_triangle[2] in triangle), triangulation))
+
+    new_result_triangulation = [[((x * (largestX - smallestX) + smallestX),
+                                  (y * (largestY - smallestY) + smallestY))
+                                 for x,y in points] for points in result_triangulation]
+
+    return new_result_triangulation
+
+plist = [(x,y) for x,y,c in random_points_list(1000)]
+triangulation = delaunay_triangulation(plist)
+
 # # 0   1
 # #  2 3
 # #  4 5
@@ -440,9 +510,31 @@ V,E = G
 print ("START", E)
 (V, E), outer = tutte_from_graph((V, E))
 
-spawn_in_area((V,E))
+# spawn_in_area((V,E))
 
 # print_tutte_dual(G)
+
+vertices = []
+edges = []
+for i, ((x0,y0),(x1,y1),(x2,y2)) in enumerate(triangulation):
+    vertices.append((x0,y0))
+    vertices.append((x1,y1))
+    vertices.append((x2,y2))
+
+    edges.append((i*3+0,i*3+1))
+    edges.append((i*3+1,i*3+2))
+    edges.append((i*3+0,i*3+2))
+
+vertices = vertices + plist
+V, E = add_color((vertices, edges), c = lambda i, n: tuple(map(lambda x: int(x*255), colorsys.hsv_to_rgb(i/n, 0.7, 1.0))))
+SV = scale_graph(V)
+print_graph([(x,y,c) for (x,y,c) in SV], edges)
+# print_graph([(x,y,(255,255,255)) for (x,y,c) in SV], edges)
+
+    # print_line(x0,y0,x1,y1,(255,255,255))
+    # print_line(x1,y1,x2,y2,(255,255,255))
+    # print_line(x0,y0,x2,y2,(255,255,255))
+
 
 print ("Random map")
 flat_m = []
