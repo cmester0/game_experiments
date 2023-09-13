@@ -386,6 +386,19 @@ def spawn_in_area(G):
         queue.append((x,y, i))
         colors.append(c)
 
+    for (a,b) in E:
+        x0, y0, _ = SV[a]
+        x1, y1, _ = SV[b]
+        steps = abs(x0 - x1) + abs(y0 - y1)
+        for i in range(0, int(steps)//2):
+            queue.append((int(x0 + point_width / 2 + (x1 - x0) / steps * i),
+                          int(y0 + point_height / 2 + (y1 - y0) / steps * i),
+                          a))
+        for i in range(int(steps)//2, int(steps)):
+            queue.append((int(x0 + point_width / 2 + (x1 - x0) / steps * i),
+                          int(y0 + point_height / 2 + (y1 - y0) / steps * i),
+                          b))
+
     iters = 0
     while len(queue) > 0:
         iters += 1
