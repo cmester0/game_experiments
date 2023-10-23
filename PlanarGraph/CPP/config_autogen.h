@@ -1,0 +1,2 @@
+#define OGDF_SIZEOF_POINTER 3
+

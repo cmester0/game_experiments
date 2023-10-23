@@ -12,8 +12,8 @@ from collections import defaultdict
 # https://en.wikipedia.org/wiki/Planar_straight-line_graph
 # https://en.wikipedia.org/wiki/Planarity_testing
 
-width = 2 * 500 # int(input("Initial width: "))
-height = 2 * 500 # int(input("Initial height: "))
+width = 2 * 2000 # int(input("Initial width: "))
+height = 2 * 2000 # int(input("Initial height: "))
 
 resMap = []
 for xi in range(width):
@@ -235,25 +235,29 @@ def ForceDirected(G, epsilon, K, outer_face):
         p[v] = outer_n_gon[i]
 
     # repulsive force
-    def f_rep(u,v):
-        return (0,0)
-        # if fixed[u]:
-        #     return (0,0)
-        # else:
-        #     diff = add(p[u], p[v])
-        #     scalar = -20 / size(diff)
-        #     return scale(diff, scalar)
+    def f_rep(u,v,percent):
+        # return (0,0)
+        if fixed[u]:
+            return (0,0)
+        else:
+            return (0,0)
+            # diff = sub(p[u], p[v])
+            # scalar = 0 if size(diff) == 0 else 1.5 * percent / size(diff)
+            # return scale(diff, scalar ** 2)
 
     def deg(u):
         return len(list(filter(lambda x: x[0] == u or x[1] == u, E)))
 
-    def f_attr(u,v):
+    def f_attr(u,v,percent):
         if fixed[u]:
             return (0,0)
         else:
             diff = sub(p[u], p[v])
             scalar = -1 / deg(u) # size(diff)
-            return scale(diff, scalar)
+            # scalar = 1
+            result = scale(diff, scalar)
+            # return scale(result, 2 * math.log(size(diff)))
+            return result
 
     F = []
     first = True
@@ -261,23 +265,23 @@ def ForceDirected(G, epsilon, K, outer_face):
     t = 0
     while t < K and (first or max([size(F[t-1][v]) for v in V]) > epsilon):
         if t > 0 and t % 1 == 0:
-            print (t, max([size(F[t-1][v]) for v in V]), epsilon)
+            print (t, K, max([size(F[t-1][v]) for v in V]), epsilon)
         first = False
         F.append([(0,0) for v in V])
 
         for u in V:
             f_res = (0,0)
 
-            for a,b in [f_rep(u,v) for v in V]:
+            for a,b in [f_rep(u,v,t/K) for v in V]:
                 f_res = (f_res[0] + a, f_res[1] + b)
 
-            for a,b in ([f_attr(u,v) for w,v in E if w == u] + [f_attr(u,v) for v,w in E if w == u]):
+            for a,b in ([f_attr(u,v,t/K) for w,v in E if w == u] + [f_attr(u,v,t/K) for v,w in E if w == u]):
                 f_res = (f_res[0] + a, f_res[1] + b)
 
             F[t][u] = f_res
 
-        if max([size(F[t-1][v]) for v in V]) < max([size(F[t][v]) for v in V]):
-            break
+        # if max([size(F[t-1][v]) for v in V]) < max([size(F[t][v]) for v in V]):
+        #     break
 
         for u in V:
             p[u] = (p[u][0] + F[t][u][0], p[u][1] + F[t][u][1])
@@ -286,11 +290,11 @@ def ForceDirected(G, epsilon, K, outer_face):
 
     return p, E
 
-def tutte_from_graph(G):
-    V,E = G
-    (V,E), outer = add_outer_face((V,E), 3) # >= 4 break guarantee?
-    p, E_ = ForceDirected((V,E), 10e3, 50, outer)
-    return (p,E_), set(outer)
+# def tutte_from_graph(G):
+#     V,E = G
+#     (V,E), outer = add_outer_face((V,E), 3) # >= 4 break guarantee?
+#     p, E_ = ForceDirected((V,E), 10e-3, 50, outer)
+#     return (p,E_), set(outer)
 
 def add_color(G, c = lambda i, n: tuple(map(lambda x: int(x*255), colorsys.hsv_to_rgb(i /n, 0.7, 1.0)))):
     V,E = G
@@ -432,7 +436,7 @@ def spawn_in_area(G):
             if sMap[xi][yi] != -1:
                 resMap[xi][yi] = colors[sMap[xi][yi]]
 
-    print_graph([(x,y,(255,255,255)) for (x,y,c) in SV], E)
+    # print_graph([(x,y,(255,255,255)) for (x,y,c) in SV], E)
 
 # Bowyer Watson
 def delaunay_triangulation(pointList):
@@ -503,13 +507,15 @@ def delaunay_triangulation(pointList):
                                   (y * (largestY - smallestY) + smallestY))
                                  for x,y in points] for points in triangulation]
 
-
     return new_result_triangulation, (outer_result_triangulation,
                                       [((x * (largestX - smallestX) + smallestX),
                                         (y * (largestY - smallestY) + smallestY))
                                        for x,y in outer_triangle])
 
-plist = [(x,y) for x,y,c in random_points_list(300)]
+# def convex_hull():
+    
+
+plist = [(x,y) for x,y,c in random_points_list(500)]
 triangulation, (outer_triangulation, outer) = delaunay_triangulation(plist)
 
 # # # 0   1
@@ -616,7 +622,7 @@ G = (list(range(len(vertices))), edges)
 # (V, E), _ = tutte_from_graph(G)
 V,E = G
 # (V,E), outer = add_outer_face((V,E), 3) # >= 4 break guarantee?
-p, E_ = ForceDirected((V,E), 10e2, 10e4, outer_list)
+p, E_ = ForceDirected((V,E), 10e-3, 1000, outer_list)
 (V, E) = (p,E_)
 ## End of tutte
 V.pop(outer_list[2])
