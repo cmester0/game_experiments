@@ -12,8 +12,8 @@ from collections import defaultdict
 # https://en.wikipedia.org/wiki/Planar_straight-line_graph
 # https://en.wikipedia.org/wiki/Planarity_testing
 
-width = 2 * 2000 # int(input("Initial width: "))
-height = 2 * 2000 # int(input("Initial height: "))
+width = 2 * 250 # int(input("Initial width: "))
+height = 2 * 250 # int(input("Initial height: "))
 
 resMap = []
 for xi in range(width):
