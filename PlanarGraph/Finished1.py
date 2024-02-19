@@ -12,8 +12,8 @@ from collections import defaultdict
 # https://en.wikipedia.org/wiki/Planar_straight-line_graph
 # https://en.wikipedia.org/wiki/Planarity_testing
 
-width = 2 * 2000 # int(input("Initial width: "))
-height = 2 * 2000 # int(input("Initial height: "))
+width = 2 * 250 # int(input("Initial width: "))
+height = 2 * 250 # int(input("Initial height: "))
 
 amount_of_elements = 300
 epsilon_tolerance = 1e-2 * math.sqrt(amount_of_elements)

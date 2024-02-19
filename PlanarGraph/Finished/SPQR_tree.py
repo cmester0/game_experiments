@@ -269,12 +269,12 @@ class Graph:
         return edges
 
     def maxNodeIndex(self):
-        return 0
+        return len(self.nodes)-1
 
     def minNodeIndex(self):
         return 0
 
-    def newEdge(self, a, b):
+    def newEdge(self, _from, to):
         pass
 
 # class GraphCopySimple():
@@ -300,7 +300,7 @@ class Node:
         return self.m_in_deg + self.m_out_deg
 
     def index(self):
-        return 0
+        return self.val
 
 class Edge:
     def __init__(self, val):
@@ -402,32 +402,32 @@ class SPQR_tree:
     def GraphCopySimple(self, G):
         return G
 
-    # def remove_multi_edges(self, E):
-    #     E_prime = []
-    #     C = []
+    def remove_multi_edges(self, E):
+        E_prime = []
+        C = []
 
-    #     i = 0
-    #     while i < len(E):
-    #         l = 1
-    #         while i+l < len(E) and E[i] == E[i+l]:
-    #             l+= 1
+        i = 0
+        while i < len(E):
+            l = 1
+            while i+l < len(E) and E[i] == E[i+l]:
+                l+= 1
 
-    #         C.append(E[i] * l)
-    #         E_prime.append(E[i])
-    #         i += l
+            C.append(E[i] * l)
+            E_prime.append(E[i])
+            i += l
 
-    #     return E_prime, C
+        return E_prime, C
 
-    # def bucket_sort(self, V, E, l, r):
-    #     # sort edges
-    #     buckets = {v: [] for v in V}
-    #     for (v, w) in E:
-    #         buckets[l(v, w)].append(r(v, w))
-    #     E = []
-    #     for v in buckets:
-    #         for w in buckets[v]:
-    #             E.append((l(v, w), r(v, w)))
-    #     return E
+    def bucket_sort(self, V, E, l, r):
+        # sort edges
+        buckets = {v: [] for v in V}
+        for (v, w) in E:
+            buckets[l(v, w)].append(r(v, w))
+        E = []
+        for v in buckets:
+            for w in buckets[v]:
+                E.append((l(v, w), r(v, w)))
+        return E
 
     # TODO: Recode
     def split_off_multi_edges(self):
@@ -440,16 +440,16 @@ class SPQR_tree:
 
         # E = self.bucket_sort(V, E, lambda x, y: y, lambda x, y: x)
         # E = self.bucket_sort(V, E, lambda x, y: x, lambda x, y: y)
-        self.parallelFreeSortUndirected(self.GC, edges, minIndex, maxIndex)
+        edges, minIndex, maxIndex = self.parallelFreeSortUndirected(self.GC, edges, minIndex, maxIndex)
 
         # Remove multi edges:
         it = 0
         while it < len(edges):
             e = edges[it]
-            minI = minIndex[e]
-            maxI = maxIndex[e]
+            minI = minIndex[e.val]
+            maxI = maxIndex[e.val]
             it += 1
-            if (it < len(edges) and minI == minIndex[edges[it]] and maxI == maxIndex[edges[it]]):
+            if (it < len(edges) and minI == minIndex[edges[it].val] and maxI == maxIndex[edges[it].val]):
                 C = self.newComp()
                 C.m_type = 0 # bond
 
@@ -461,9 +461,9 @@ class SPQR_tree:
                 self.m_TYPE[edges[it].val] = 3 # removed
 
                 it += 1
-                while it < len(edges) and minI == minIndex[edges[it]] and maxI == maxIndex[it]:
+                while it < len(edges) and minI == minIndex[edges[it].val] and maxI == maxIndex[it]:
                     C.append(edges[it])
-                    self.m_TYPE[edges[it]] = 3 # removed
+                    self.m_TYPE[edges[it].val] = 3 # removed
                     it += 1
             it += 1
 
@@ -505,9 +505,9 @@ class SPQR_tree:
         bucket = {v: [] for v in range(min_v, max_v+1)}
 
         for e in edges:
-            bucket[f(e)].append(e) # f.getBucket()
+            bucket[f[e.val]].append(e) # f.getBucket()
 
-        i = 0
+        edges = []
         for j in range(min_v, max_v+1):
             for e in bucket[j]:
                 edges[i] = e
@@ -522,11 +522,11 @@ class SPQR_tree:
             srcIndex = e.source().index()
             tgtIndex = e.target().index()
             if (srcIndex <= tgtIndex):
-                minIndex[e] = srcIndex
-                maxIndex[e] = tgtIndex
+                minIndex[e.val] = srcIndex
+                maxIndex[e.val] = tgtIndex
             else:
-                minIndex[e] = tgtIndex
-                maxIndex[e] = srcIndex
+                minIndex[e.val] = tgtIndex
+                maxIndex[e.val] = srcIndex
 
         bucketMin = minIndex # BucketEdgeArray
         bucketMax = maxIndex # BucketEdgeArray
@@ -538,6 +538,9 @@ class SPQR_tree:
 
         print ("EDGE:", edges)
 
+        edges = self.bucketSort(edges, 0, G.maxNodeIndex(), bucketMin)
+        edges = self.bucketSort(edges, 0, G.maxNodeIndex(), bucketMax)
+        return edges, minIndex, maxIndex
 
     def buildAcceptableAdjStruct(self, G):
         max_v = 3 * len(G.nodes) + 2
@@ -557,170 +560,169 @@ class SPQR_tree:
             for e in BUCKET[i]:
                 self.m_IN_ADJ[e.val] = self.m_A[e.source().val].append(e)
 
-    # def TSTACK_push(self, h, a, b):
-    #     self.m_TSTACK.append((h,a,b))
+    def TSTACK_push(self, h, a, b):
+        self.m_TSTACK.append((h,a,b))
 
-    # def TSTACK_pushEOS(self):
-    #     self.m_TSTACK.append(None) # EOS
+    def TSTACK_pushEOS(self):
+        self.m_TSTACK.append(None) # EOS
 
-    # def TSTACK_notEOS(self):
-    #     return self.m_TSTACK[-1] != None # EOS
+    def TSTACK_notEOS(self):
+        return self.m_TSTACK[-1] != None # EOS
 
     def newComp(self):
         c = Comp()
         self.m_component.append(c)
         return self.m_component[-1]
 
+    # Update functions
+    def new_component(es):
+        # comp = []
+        # for e in es:
+        #     E.remove(e)
+        #     comp.append(e)
+        # C.append(comp)
+        pass
 
-    # # Update functions
-    # def new_component(es):
-    #     # comp = []
-    #     # for e in es:
-    #     #     E.remove(e)
-    #     #     comp.append(e)
-    #     # C.append(comp)
-    #     pass
+    def edge_list_union(C, es):
+        # comp = []
+        # for e in es:
+        #     E.remove(e)
+        #     comp.append(e)
+        # C += es
+        pass
 
-    # def edge_list_union(C, es):
-    #     # comp = []
-    #     # for e in es:
-    #     #     E.remove(e)
-    #     #     comp.append(e)
-    #     # C += es
-    #     pass
+    # end of update functions
+    def phi(e):
+        if e == arrow(v, w) and lowpt2[w] < v:
+            return 3 * lowpt1[w]
+        elif e == hook_arrow(v,w):
+            return 3 * w + 1
+        elif e == arrow(v,w) and lowpt2[w] >= v: # should be else
+            return 3 * lowpt1[w] + 2
 
-    # # end of update functions
-    # def phi(e):
-    #     if e == arrow(v, w) and lowpt2[w] < v:
-    #         return 3 * lowpt1[w]
-    #     elif e == hook_arrow(v,w):
-    #         return 3 * w + 1
-    #     elif e == arrow(v,w) and lowpt2[w] >= v: # should be else
-    #         return 3 * lowpt1[w] + 2
+    # support function
 
-    # # support function
+    def firstChild(v):
+        pass
 
-    # def firstChild(v):
-    #     pass
+    def high(w):
+        pass
 
-    # def high(w):
-    #     pass
+    def top_stack_bool_triple(stack, f):
+        return bool(*[f(h,a,b) for (h,a,b) in [stack[-1]]])
 
-    # def top_stack_bool_triple(stack, f):
-    #     return bool(*[f(h,a,b) for (h,a,b) in [stack[-1]]])
+    def top_stack_bool_double(stack, f):
+        return bool(*[f(x,y) for (x,y) in [stack[-1]]])
 
-    # def top_stack_bool_double(stack, f):
-    #     return bool(*[f(x,y) for (x,y) in [stack[-1]]])
+    # Algorithm 5
+    def check_for_type_2_pairs(v, w, TSTACK, ESTACK):
+        while (v != 1 and (top_stack_bool_triple(TSTACK, lambda h,a,b: a == v) or (deg[w] == 2 and firstChild[w] > w))):
+            if top_stack_bool_triple(TSTACK, lambda h,a,b: a == v and parent[b] == a):
+                TSTACK.pop()
+            else:
+                e_ab = None
+                if deg[w] == 2 and firstChild[w] > w:
+                    C = new_component([])
+                    (v, w) = ESTACK.pop()
+                    C.append((v,w))
+                    (w, b) = ESTACK.pop()
+                    C.append((w,b))
+                    e_ = new_virtual_edge(v,x,C)
+                    if ESTACK[-1] == (v,b):
+                        e_ab = ESTACK.pop()
+                else:
+                    h,a,b = TSTACK.pop()
+                    C = new_component([])
+                    while top_stack_bool_double(ESTACK, lambda x,y: a <= x <= h and a <= y <= h):
+                        if (x,y) == (a,b):
+                            e_ab = ESTACK.pop()
+                        else:
+                            C = edge_list_union(C, ESTACK.pop())
+                    e_ = new_virtual_edge(a,b,C)
+                if e_ab != None:
+                    C = new_component([e_ab, e_])
+                    e_ = new_virtual_edge(v,b,C)
+                ESTACK.append(e_)
+                make_tree_edge(e_, arrow(v, b)) # v -> b
+                w = b
 
-    # # Algorithm 5
-    # def check_for_type_2_pairs(v, w, TSTACK, ESTACK):
-    #     while (v != 1 and (top_stack_bool_triple(TSTACK, lambda h,a,b: a == v) or (deg[w] == 2 and firstChild[w] > w))):
-    #         if top_stack_bool_triple(TSTACK, lambda h,a,b: a == v and parent[b] == a):
-    #             TSTACK.pop()
-    #         else:
-    #             e_ab = None
-    #             if deg[w] == 2 and firstChild[w] > w:
-    #                 C = new_component([])
-    #                 (v, w) = ESTACK.pop()
-    #                 C.append((v,w))
-    #                 (w, b) = ESTACK.pop()
-    #                 C.append((w,b))
-    #                 e_ = new_virtual_edge(v,x,C)
-    #                 if ESTACK[-1] == (v,b):
-    #                     e_ab = ESTACK.pop()
-    #             else:
-    #                 h,a,b = TSTACK.pop()
-    #                 C = new_component([])
-    #                 while top_stack_bool_double(ESTACK, lambda x,y: a <= x <= h and a <= y <= h):
-    #                     if (x,y) == (a,b):
-    #                         e_ab = ESTACK.pop()
-    #                     else:
-    #                         C = edge_list_union(C, ESTACK.pop())
-    #                 e_ = new_virtual_edge(a,b,C)
-    #             if e_ab != None:
-    #                 C = new_component([e_ab, e_])
-    #                 e_ = new_virtual_edge(v,b,C)
-    #             ESTACK.append(e_)
-    #             make_tree_edge(e_, arrow(v, b)) # v -> b
-    #             w = b
+    # Algorithm 6
+    def check_for_type_1_pair(v,w, TSTACK, ESTACK):
+        if lowpt2[w] >= v and lowpt1[w] < v and (parent[v] != 1 or adj_to_a_not_yet_visited_tree_arc(v)):
+            C = new_component([])
+            while top_stack_bool_double(ESTACK, lambda x,y: w <= x < w + ND[w] or w <= y < w + ND[w]):
+                C = edge_list_union(C, [ESTACK.pop()])
+            e_ = new_virtual_edge(v, lowpt1[w]. C)
+            if ESTACK[-1] == (v,lowpt1[w]):
+                C = new_component(ESTACK.pop(), e_)
+                e_ = new_virtual_edge(v, lowpt1[w], C)
+            if lowpt1[w] != parent[v]:
+                ESTACK.append(e_)
+                make_tree_edge(e_, arrow(lowpt1[w], v)) # lowpt1[w] -> v
+            else:
+                C = new_component(e_, arrow(lowpt1[w], v)) # lowpt1[w] -> v
+                e_ = new_virtual_edge(lowpt1[w], v, C)
+                make_tree_edge(e_, arrow(lowpt1[w], v)) # lowpt1[w] -> v
 
-    # # Algorithm 6
-    # def check_for_type_1_pair(v,w, TSTACK, ESTACK):
-    #     if lowpt2[w] >= v and lowpt1[w] < v and (parent[v] != 1 or adj_to_a_not_yet_visited_tree_arc(v)):
-    #         C = new_component([])
-    #         while top_stack_bool_double(ESTACK, lambda x,y: w <= x < w + ND[w] or w <= y < w + ND[w]):
-    #             C = edge_list_union(C, [ESTACK.pop()])
-    #         e_ = new_virtual_edge(v, lowpt1[w]. C)
-    #         if ESTACK[-1] == (v,lowpt1[w]):
-    #             C = new_component(ESTACK.pop(), e_)
-    #             e_ = new_virtual_edge(v, lowpt1[w], C)
-    #         if lowpt1[w] != parent[v]:
-    #             ESTACK.append(e_)
-    #             make_tree_edge(e_, arrow(lowpt1[w], v)) # lowpt1[w] -> v
-    #         else:
-    #             C = new_component(e_, arrow(lowpt1[w], v)) # lowpt1[w] -> v
-    #             e_ = new_virtual_edge(lowpt1[w], v, C)
-    #             make_tree_edge(e_, arrow(lowpt1[w], v)) # lowpt1[w] -> v
+    # Algorithm 4
+    def PathSearch(self, v):
+        for e in Adj[v]:
+            if e == arrow(v, w):
+                # e starts a path
+                if starts_path(e):
+                    deleted = []
+                    while top_stack_bool_triple(TSTACK, lambda h,a,b: a > lowpt1(w)):
+                        deleted.append(TSTACK.pop())
+                    if not deleted:
+                        TSTACK.append((w + ND[w] - 1, lowpt1[w], v))
+                    else:
+                        y = max(h for (h,a,b) in deleted)
+                        h,a,b = deleted[-1]
+                        TSTACK.append((max(y,w + ND[w] - 1), lowpt1[w], b))
+                    TSTACK.append(None)
+                PathSearch(w)
+                ESTACK.append((v,w)) # v -> w
+                # check for type 2 pairs
+                check_for_type_2_pairs(v, w, TSTACK, ESTACK)
+                # check for a type 1 pair
+                check_for_type_1_pair(v, w, TSTACK, ESTACK)
 
-    # # Algorithm 4
-    # def PathSearch(v):
-    #     for e in Adj[v]:
-    #         if e == arrow(v, w):
-    #             # e starts a path
-    #             if starts_path(e):
-    #                 deleted = []
-    #                 while top_stack_bool_triple(TSTACK, lambda h,a,b: a > lowpt1(w)):
-    #                     deleted.append(TSTACK.pop())
-    #                 if not deleted:
-    #                     TSTACK.append((w + ND[w] - 1, lowpt1[w], v))
-    #                 else:
-    #                     y = max(h for (h,a,b) in deleted)
-    #                     h,a,b = deleted[-1]
-    #                     TSTACK.append((max(y,w + ND[w] - 1), lowpt1[w], b))
-    #                 TSTACK.append(None)
-    #             PathSearch(w)
-    #             ESTACK.append((v,w)) # v -> w
-    #             # check for type 2 pairs
-    #             check_for_type_2_pairs(v, w, TSTACK, ESTACK)
-    #             # check for a type 1 pair
-    #             check_for_type_1_pair(v, w, TSTACK, ESTACK)
+                if starts_path(e):
+                    # pop until and including EOS
+                    while TSTACK[-1] != None:
+                        TSTACK.pop()
+                    TSTACK.pop()
+                while top_stack_bool_triple(TSTACK, lambda h,a,b: a != v and b != v and high[v] > h):
+                    TSTACK.pop()
+            else:
+                e = hook_arrow(v,w) # v \-> w
+                if starts_path(e):
+                    deleted = []
+                    while top_stack_bool_triple(TSTACK, lambda h,a,b: a > w):
+                        deleted.append(TSTACK.pop())
+                    if not deleted:
+                        TSTACK.append((v,w,v))
+                    else:
+                        y = max(h for (h,a,b) in deleted)
+                        h,a,b = deleted[-1]
+                        TSTACK.append((y,w,b))
+                if w == parent[v]:
+                    C = new_component([e, arrow(w, v)]) # w -> v
+                    e_ = new_virtual_edge(w,v,C)
+                    make_tree_edge(e_, arrow(w,v)) # w -> v
+                else:
+                    ESTACK.append(e)
 
-    #             if starts_path(e):
-    #                 # pop until and including EOS
-    #                 while TSTACK[-1] != None:
-    #                     TSTACK.pop()
-    #                 TSTACK.pop()
-    #             while top_stack_bool_triple(TSTACK, lambda h,a,b: a != v and b != v and high[v] > h):
-    #                 TSTACK.pop()
-    #         else:
-    #             e = hook_arrow(v,w) # v \-> w
-    #             if starts_path(e):
-    #                 deleted = []
-    #                 while top_stack_bool_triple(TSTACK, lambda h,a,b: a > w):
-    #                     deleted.append(TSTACK.pop())
-    #                 if not deleted:
-    #                     TSTACK.append((v,w,v))
-    #                 else:
-    #                     y = max(h for (h,a,b) in deleted)
-    #                     h,a,b = deleted[-1]
-    #                     TSTACK.append((y,w,b))
-    #             if w == parent[v]:
-    #                 C = new_component([e, arrow(w, v)]) # w -> v
-    #                 e_ = new_virtual_edge(w,v,C)
-    #                 make_tree_edge(e_, arrow(w,v)) # w -> v
-    #             else:
-    #                 ESTACK.append(e)
+    # Algorithm 3
+    def find_split_components(self):
+        TSTACK = []
+        ESTACK = []
 
-    # # Algorithm 3
-    # def find_split_components():
-    #     TSTACK = []
-    #     ESTACK = []
+        TSTACK.append(None) # EOS
 
-    #     TSTACK.push(None) # EOS
+        self.PathSearch(1)
 
-    #     PathSearch(1)
-
-    #     C = new_component(ESTACK)
+        C = new_component(ESTACK)
 
     # computes NUMBER, FATHER, LOWPT 1 and 2, ND, TYPE and DEGREE
     def DFS1(self, G, v, u):
@@ -767,17 +769,16 @@ class SPQR_tree:
 
                 elif self.m_NUMBER[w.val] > self.m_LOWPT1[v.val]:
                     self.m_LOWPT2[v.val] = min(self.m_LOWPT2[v.val], self.m_NUMBER[w.val])
-
-
-    # def build_triconnected_components(V, E, C):
-    #     for i in range(len(C)):
-    #         # Ci <> Ø and Ci is a bond or polygon
-    #         if C[i] != [] and bond_or_polygon(C[i]):
-    #             for e in C[i]:
-    #                 # exists j <> i with e in Cj and type(Ci) = type(Cj)
-    #                 if j != i and e in C[j] and Ctype[i] == Ctype[j]:
-    #                     C[i] = (C[i] + C[j]).remove(e)
-    #                     C[j] = []
+ 
+    def build_triconnected_components(V, E, C):
+        for i in range(len(C)):
+            # Ci <> Ø and Ci is a bond or polygon
+            if C[i] != [] and bond_or_polygon(C[i]):
+                for e in C[i]:
+                    # exists j <> i with e in Cj and type(Ci) = type(Cj)
+                    if j != i and e in C[j] and Ctype[i] == Ctype[j]:
+                        C[i] = (C[i] + C[j]).remove(e)
+                        C[j] = []
 
 
 
@@ -791,8 +792,9 @@ tree = SPQR_tree(G)
 print ([e.val for e in tree.GC.edges])
 print ([v.val for v in tree.GC.nodes])
 
-# V, E, C = tree.split_off_multi_edges(G[0], G[1])
-# find_split_components()
+# V, E, C =
+tree.split_off_multi_edges()
+tree.find_split_components()
 
 # print (build_triconnected_components(V, E, C))
 
