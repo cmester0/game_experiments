@@ -274,6 +274,9 @@ class Graph:
     def minNodeIndex(self):
         return 0
 
+    def newEdge(self, a, b):
+        pass
+
 # class GraphCopySimple():
 #     def __init__(self, G):
 #         self.nodes = G.V
@@ -360,7 +363,7 @@ class SPQR_tree:
         self.m = len(self.GC.edges)
 
         if self.n <= 2:
-            C = newComp()
+            C = self.newComp()
             for e in self.GC.edges:
                 C.append(e) # C << e
             C.m_type = 0 # 0 = bond
@@ -431,7 +434,7 @@ class SPQR_tree:
         # sort edges
         V, E = self.GC.nodes, self.GC.edges
 
-        edges = []
+        edges = self.GC.edges
         minIndex = {e.val: None for e in self.GC.edges}
         maxIndex = {e.val: None for e in self.GC.edges}
 
@@ -447,7 +450,7 @@ class SPQR_tree:
             maxI = maxIndex[e]
             it += 1
             if (it < len(edges) and minI == minIndex[edges[it]] and maxI == maxIndex[edges[it]]):
-                C = newComp()
+                C = self.newComp()
                 C.m_type = 0 # bond
 
                 C.append(self.GC.newEdge(e.source(), e.target()))
@@ -506,12 +509,12 @@ class SPQR_tree:
 
         i = 0
         for j in range(min_v, max_v+1):
-            edges[i] = bucket[j]
-            i += 1
+            for e in bucket[j]:
+                edges[i] = e
+                i += 1
 
-        return bucket
-        
-    
+        return edges
+
     def parallelFreeSortUndirected(self, G, edges, minIndex, maxIndex):
         G.allEdges(edges);
 
@@ -525,11 +528,15 @@ class SPQR_tree:
                 minIndex[e] = tgtIndex
                 maxIndex[e] = srcIndex
 
-        bucketMin = BucketEdgeArray(minIndex)
-        bucketMax = BucketEdgeArray(maxIndex)
+        bucketMin = minIndex # BucketEdgeArray
+        bucketMax = maxIndex # BucketEdgeArray
 
-        edges.bucketSort(0, G.maxNodeIndex(), bucketMin)
-        edges.bucketSort(0, G.maxNodeIndex(), bucketMax)
+        print ("EDGE BEFORE:", edges)
+
+        edges = self.bucketSort(edges, 0, G.maxNodeIndex(), lambda x: bucketMin[x])
+        edges = self.bucketSort(edges, 0, G.maxNodeIndex(), lambda x: bucketMax[x])
+
+        print ("EDGE:", edges)
 
 
     def buildAcceptableAdjStruct(self, G):
@@ -559,10 +566,10 @@ class SPQR_tree:
     # def TSTACK_notEOS(self):
     #     return self.m_TSTACK[-1] != None # EOS
 
-    # def newComp():
-    #     c = Comp()
-    #     self.m_component.append(c)
-    #     return self.m_component[-1]
+    def newComp(self):
+        c = Comp()
+        self.m_component.append(c)
+        return self.m_component[-1]
 
 
     # # Update functions

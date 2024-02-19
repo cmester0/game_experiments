@@ -15,14 +15,19 @@ from collections import defaultdict
 width = 2 * 2000 # int(input("Initial width: "))
 height = 2 * 2000 # int(input("Initial height: "))
 
+amount_of_elements = 300
+epsilon_tolerance = 1e-2 * math.sqrt(amount_of_elements)
+max_iters = 1e4
+circle_count = 4
+
 resMap = []
 for xi in range(width):
     resMap.append([])
     for yi in range(height):
         resMap[xi].append((0,0,0))
 
-point_width = 10
-point_height = 10
+point_width = 5
+point_height = 5
 
 def put_point(x,y,color):
     for xi in range(point_width):
@@ -46,12 +51,12 @@ def random_points_list(amount):
     return l
 
 def print_line(x0,y0,x1,y1, color):
-    steps = abs(x0 - x1) + abs(y0 - y1)
+    steps = abs(x0 - x1) + abs(y0 - y1) + 1
     for i in range(int(steps)):
         resMap[int(x0 + point_width / 2 + (x1 - x0) / steps * i)][int(y0 + point_height / 2 + (y1 - y0) / steps * i)] = color
 
 def print_dashed_line(x0,y0,x1,y1, color):
-    steps = abs(x0 - x1) + abs(y0 - y1)
+    steps = abs(x0 - x1) + abs(y0 - y1) + 1
 
     new_range = list(sorted(list(range(0,int(steps), 8)) +
                             list(range(1,int(steps), 8)) +
@@ -77,7 +82,7 @@ def print_polygon(polygon, color):
 
 def print_filled_polygon(polygon, color):
     for (i0, i1), i2 in zip(zip(polygon, polygon[1:] + polygon[:1]), polygon[2:] + polygon[:2]):
-        steps = abs(i1[0] - i2[0]) + abs(i1[1] - i2[1])
+        steps = abs(i1[0] - i2[0]) + abs(i1[1] - i2[1]) + 1
         for j in range(steps):
             print_line(i0[0], i0[1],
                        int(i1[0] + (i2[0] - i1[0]) / steps * j),
@@ -91,7 +96,7 @@ def print_graph(vertices, edges):
     for i, j in edges:
         x0, y0, c0 = vertices[i]
         x1, y1, c1 = vertices[j]
-        steps = abs(x0 - x1) + abs(y0 - y1)
+        steps = abs(x0 - x1) + abs(y0 - y1) + 1
         x2, y2 = x0 + (x1 - x0) / steps * steps/2, y0 + (y1 - y0) / steps * steps/2
         x2_, y2_ = x0 + (x1 - x0) / steps * steps//2, y0 + (y1 - y0) / steps * steps//2
         print_line(x0,y0,x2,y2,c0)
@@ -216,16 +221,11 @@ def add_outer_face(G, outer_degree=3):
 
     return (V,E), outer_face
 
-def ForceDirected(G, epsilon, K, outer_face):
+def ForceDirected(G, epsilon, K, outer_face, outer_n_gon):
     V, E = G
 
     V = list(V)
     E = list(E)
-
-    def n_polygon(n):
-        return [(width * math.cos(math.pi*2*i/n), height * math.sin(math.pi*2*i/n)) for i in range(n)]
-
-    outer_n_gon = n_polygon(len(outer_face))
 
     p = [random_point() for _ in V]
     fixed = [False for v in V]
@@ -264,8 +264,13 @@ def ForceDirected(G, epsilon, K, outer_face):
 
     t = 0
     while t < K and (first or max([size(F[t-1][v]) for v in V]) > epsilon):
+<<<<<<< Updated upstream
         if t > 0 and t % 1 == 0:
             print (t, K, max([size(F[t-1][v]) for v in V]), epsilon)
+=======
+        if t > 0 and t % 10 == 0:
+            print (t, max([size(F[t-1][v]) for v in V]), epsilon)
+>>>>>>> Stashed changes
         first = False
         F.append([(0,0) for v in V])
 
@@ -284,18 +289,22 @@ def ForceDirected(G, epsilon, K, outer_face):
         #     break
 
         for u in V:
-            p[u] = (p[u][0] + F[t][u][0], p[u][1] + F[t][u][1])
+            if not fixed[u]:
+                p[u] = (p[u][0] + F[t][u][0], p[u][1] + F[t][u][1])
 
         t += 1
 
     return p, E
 
+<<<<<<< Updated upstream
 # def tutte_from_graph(G):
 #     V,E = G
 #     (V,E), outer = add_outer_face((V,E), 3) # >= 4 break guarantee?
 #     p, E_ = ForceDirected((V,E), 10e-3, 50, outer)
 #     return (p,E_), set(outer)
 
+=======
+>>>>>>> Stashed changes
 def add_color(G, c = lambda i, n: tuple(map(lambda x: int(x*255), colorsys.hsv_to_rgb(i /n, 0.7, 1.0)))):
     V,E = G
     return [(x,y,c(i, len(V)))for i, (x,y) in enumerate(V)], E
@@ -377,9 +386,11 @@ def dual(G, outer):
 
     return V_, E_
 
-def spawn_in_area(G):
+def spawn_in_area(G, ignore_list):
     V, E = G
     V, E = add_color((V, E))
+    for i in ignore_list:
+        V[i] = (V[i][0], V[i][1], (0,0,0))
 
     SV = scale_graph(V)
     print_graph([(x,y,(255,255,255)) for (x,y,c) in SV], E)
@@ -399,7 +410,7 @@ def spawn_in_area(G):
     for (a,b) in E:
         x0, y0, _ = SV[a]
         x1, y1, _ = SV[b]
-        steps = abs(x0 - x1) + abs(y0 - y1)
+        steps = abs(x0 - x1) + abs(y0 - y1) + 1
         for i in range(0, int(steps)//2):
             queue.append((int(x0 + point_width / 2 + (x1 - x0) / steps * i),
                           int(y0 + point_height / 2 + (y1 - y0) / steps * i),
@@ -412,7 +423,7 @@ def spawn_in_area(G):
     iters = 0
     while len(queue) > 0:
         iters += 1
-        if iters > 0 and iters % 1000 == 0:
+        if iters > 0 and iters % 100000 == 0:
             print (iters, len(queue))
         elem_x, elem_y, elem_i = queue.pop(random.randint(0,len(queue)-1))
         if sMap[elem_x][elem_y] != -1:
@@ -436,7 +447,19 @@ def spawn_in_area(G):
             if sMap[xi][yi] != -1:
                 resMap[xi][yi] = colors[sMap[xi][yi]]
 
+<<<<<<< Updated upstream
     # print_graph([(x,y,(255,255,255)) for (x,y,c) in SV], E)
+=======
+    for x in outer_list:
+        SV.pop(x)
+    E = [(a,b) for a, b in E if not (a in outer_list or b in outer_list)]
+    for x in outer_list:
+        E = [(a if a < x else a-1,
+            b if b < x else b-1)
+             for a, b in E]
+
+    print_graph([(x,y,(255,255,255)) for (x,y,c) in SV], E)
+>>>>>>> Stashed changes
 
 # Bowyer Watson
 def delaunay_triangulation(pointList):
@@ -512,11 +535,40 @@ def delaunay_triangulation(pointList):
                                         (y * (largestY - smallestY) + smallestY))
                                        for x,y in outer_triangle])
 
+<<<<<<< Updated upstream
 # def convex_hull():
     
 
 plist = [(x,y) for x,y,c in random_points_list(500)]
+=======
+def draw_and_reset(filename):
+    global resMap
+    flat_m = []
+    for yi in range(height):
+        for xi in range(width):
+            flat_m.append(resMap[xi][yi])
+
+    img = Image.new('RGB', (width, height)) # width, height
+    img.putdata(flat_m)
+    img.save(filename)
+    resMap = []
+    for xi in range(width):
+        resMap.append([])
+        for yi in range(height):
+            resMap[xi].append((0,0,0))
+
+plist = list(set([(x,y) for x,y,c in random_points_list(amount_of_elements)]))
+
+outer_circle = [
+    (int((width * 4) * math.cos(phi) + width/2),
+     int((height * 4) * math.sin(phi) + height/2)) for phi in [math.pi / 180 * i for i in range(0,360,360//circle_count)]]
+plist = outer_circle + plist
+
+
+>>>>>>> Stashed changes
 triangulation, (outer_triangulation, outer) = delaunay_triangulation(plist)
+
+outer = outer_circle # + outer
 
 # # # 0   1
 # # #  2 3
@@ -555,7 +607,7 @@ outer_set = set()
 vertices_index = dict()
 index = 0
 
-for (x0,y0),(x1,y1),(x2,y2) in outer_triangulation:
+for (x0,y0),(x1,y1),(x2,y2) in triangulation:
     if not (x0,y0) in vertices_index:
         vertices_index[(x0,y0)] = index
         vertices.append((x0,y0))
@@ -580,91 +632,49 @@ for (x0,y0),(x1,y1),(x2,y2) in outer_triangulation:
     edges.append((vertices_index[(x1, y1)],vertices_index[(x2, y2)]))
     edges.append((vertices_index[(x0, y0)],vertices_index[(x2, y2)]))
 
-outer_list = list(sorted(outer_set))
+outer_list = list(sorted(outer_set, reverse=True))
+print (outer)
+print (outer_list)
 
 vertices = vertices # + plist
 
-# # PLOT GRAPH:
 # V, E = vertices, edges
 V, E = add_color((vertices, edges))
-V.pop(outer_list[2])
-V.pop(outer_list[1])
-V.pop(outer_list[0])
+
+for x in outer_list:
+    V.pop(x)
 E = [(a,b) for a, b in E if not (a in outer_list or b in outer_list)]
-E = [(a if a < outer_list[2] else a-1,
-      b if b < outer_list[2] else b-1)
+for x in outer_list:
+    E = [(a if a < x else a-1,
+      b if b < x else b-1)
      for a, b in E]
-E = [(a if a < outer_list[1] else a-1,
-      b if b < outer_list[1] else b-1)
-     for a, b in E]
-E = [(a if a < outer_list[0] else a-1,
-      b if b < outer_list[0] else b-1)
-     for a, b in E]
+
 SV = scale_graph(V)
 print_graph([(x,y,c) for (x,y,c) in SV], E)
 
 print ("Random map")
-flat_m = []
-for yi in range(height):
-    for xi in range(width):
-        flat_m.append(resMap[xi][yi])
-
-img = Image.new('RGB', (width, height)) # width, height
-img.putdata(flat_m)
-img.save('finished_data.png')
-resMap = []
-for xi in range(width):
-    resMap.append([])
-    for yi in range(height):
-        resMap[xi].append((0,0,0))
+draw_and_reset('finished_data.png')
 
 G = (list(range(len(vertices))), edges)
 # (V, E), _ = tutte_from_graph(G)
 V,E = G
 # (V,E), outer = add_outer_face((V,E), 3) # >= 4 break guarantee?
+<<<<<<< Updated upstream
 p, E_ = ForceDirected((V,E), 10e-3, 1000, outer_list)
 (V, E) = (p,E_)
+=======
+p, E_ = ForceDirected((V,E), epsilon_tolerance, max_iters, outer_list, [vertices[i] for i in outer_list])
+(V, E) = (list(p), list(E_))
+>>>>>>> Stashed changes
 ## End of tutte
-V.pop(outer_list[2])
-V.pop(outer_list[1])
-V.pop(outer_list[0])
-E = [(a,b) for a, b in E if not (a in outer_list or b in outer_list)]
-E = [(a if a < outer_list[2] else a-1,
-      b if b < outer_list[2] else b-1)
-     for a, b in E]
-E = [(a if a < outer_list[1] else a-1,
-      b if b < outer_list[1] else b-1)
-     for a, b in E]
-E = [(a if a < outer_list[0] else a-1,
-      b if b < outer_list[0] else b-1)
-     for a, b in E]
 
 V_, E_ = add_color((V, E))
 print_graph_scaled((V_, E_))
 
 print ("Random map")
-flat_m = []
-for yi in range(height):
-    for xi in range(width):
-        flat_m.append(resMap[xi][yi])
+draw_and_reset('finished_result.png')
 
-img = Image.new('RGB', (width, height)) # width, height
-img.putdata(flat_m)
-img.save('finished_result.png')
-resMap = []
-for xi in range(width):
-    resMap.append([])
-    for yi in range(height):
-        resMap[xi].append((0,0,0))
-
-spawn_in_area((V, E))
+spawn_in_area((V, E), outer_list)
 
 print ("Random map")
-flat_m = []
-for yi in range(height):
-    for xi in range(width):
-        flat_m.append(resMap[xi][yi])
-
-img = Image.new('RGB', (width, height)) # width, height
-img.putdata(flat_m)
-img.save('finished_spawn.png')
+draw_and_reset('finished_spawn.png')
