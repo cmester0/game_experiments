@@ -509,7 +509,7 @@ def delaunay_triangulation(pointList):
                                         (y * (largestY - smallestY) + smallestY))
                                        for x,y in outer_triangle])
 
-plist = [(x,y) for x,y,c in random_points_list(300)]
+plist = [(x,y) for x,y,c in random_points_list(20)]
 triangulation, (outer_triangulation, outer) = delaunay_triangulation(plist)
 
 # # # 0   1
@@ -597,7 +597,12 @@ E = [(a if a < outer_list[0] else a-1,
 SV = scale_graph(V)
 print_graph([(x,y,c) for (x,y,c) in SV], E)
 
-print ("Random map")
+print ("=============")
+for a,b in list(set(E)):
+    print (a,b)
+print ("=============")
+
+# print ("Random map")
 flat_m = []
 for yi in range(height):
     for xi in range(width):
@@ -636,7 +641,7 @@ E = [(a if a < outer_list[0] else a-1,
 V_, E_ = add_color((V, E))
 print_graph_scaled((V_, E_))
 
-print ("Random map")
+# print ("Random map")
 flat_m = []
 for yi in range(height):
     for xi in range(width):
@@ -653,7 +658,7 @@ for xi in range(width):
 
 spawn_in_area((V, E))
 
-print ("Random map")
+# print ("Random map")
 flat_m = []
 for yi in range(height):
     for xi in range(width):
